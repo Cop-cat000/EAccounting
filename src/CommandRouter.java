@@ -19,19 +19,25 @@ public class CommandRouter extends MessageSender {
         this.stmt = stmt;
         users = new Users(stmt, tc);
         accounts = new Accounts(stmt, tc);
+        transactions = new Transactions(stmt, tc);
+
         commands.put("/start", users);
         
         commands.put("/add_account", accounts);
         commands.put("/edit_account", accounts);
         commands.put("/del_account", accounts);
         commands.put("/display_account", accounts);
-        
+        commands.put("/add_transaction", transactions);
+        commands.put("/edit_transaction", transactions);
+        commands.put("/del_transaction", transactions);
+        commands.put("/display_transaction", transactions);
     }
 
 
     //Object fields
     private Users users;
     private Accounts accounts;
+    private Transactions transactions;
     
 
     //Private methods

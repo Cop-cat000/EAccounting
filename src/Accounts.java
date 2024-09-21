@@ -12,13 +12,13 @@ import static logs.LogerBot.sendException;
 import logs.*;
 
 public class Accounts extends MessageSender implements CommandExecutor {
-    private Statement accStmt;
+    private Statement stmt;
     private long chatId;
     private String[] cmd;
 
     public Accounts(Statement stmt, TelegramClient tc) {
         super(tc);
-        accStmt = stmt;
+        this.stmt = stmt;
     }
 
     public void executeCmd(String[] cmd, long chatId) {
@@ -82,7 +82,7 @@ public class Accounts extends MessageSender implements CommandExecutor {
         else
             sql += "null);";
         try {
-            accStmt.execute(sql);
+            stmt.execute(sql);
             sendMessage(chatId, "Done successfully");
         } catch(SQLException e) {
             sendException(e);
@@ -133,7 +133,7 @@ public class Accounts extends MessageSender implements CommandExecutor {
             }
             sql = "UPDATE accounts SET account_name = '" + newVal + "' WHERE account_id = " + accountId + ";";
             try {
-                accStmt.execute(sql);
+                stmt.execute(sql);
                 sendMessage(chatId, "Done successfully");
             } catch(SQLException e) {
                 sendException(e);
@@ -152,7 +152,7 @@ public class Accounts extends MessageSender implements CommandExecutor {
             //Getting oldBalance
             sql = "SELECT avail_balance FROM accounts WHERE account_id = " + accountId + ";";
             try {
-                rs = accStmt.executeQuery(sql);
+                rs = stmt.executeQuery(sql);
                 while(rs.next())
                     oldBalance = rs.getInt(1);
             } catch(SQLException e) {
@@ -173,7 +173,7 @@ public class Accounts extends MessageSender implements CommandExecutor {
             }
             sql = "UPDATE accounts SET avail_balance = " + newBalance + " WHERE account_id = " + accountId + ";";
             try {
-                accStmt.execute(sql);
+                stmt.execute(sql);
                 sendMessage(chatId, "Done successfully");
             } catch(SQLException e) {
                 sendException(e);
@@ -188,7 +188,7 @@ public class Accounts extends MessageSender implements CommandExecutor {
             sql = "INSERT INTO transactions (user_id, sum, date, type, account_id1, comment) " +
                 "VALUES (" + chatId + ", " + sum + ", CURRENT_TIMESTAMP(), 'BALANCE CHANGE', " + accountId + ", '" + comment + "');";
             try {
-                accStmt.execute(sql);
+                stmt.execute(sql);
                 sendMessage(chatId, "Done successfully");
             } catch(SQLException e) {
                 sendException(e);
@@ -203,7 +203,7 @@ public class Accounts extends MessageSender implements CommandExecutor {
             ResultSet rs;
             sql = "SELECT type FROM accounts WHERE account_id = " + accountId + ";";
             try {
-                rs = accStmt.executeQuery(sql);
+                rs = stmt.executeQuery(sql);
                 while(rs.next())
                     type = rs.getString(1);
             } catch(SQLException e) {
@@ -228,7 +228,7 @@ public class Accounts extends MessageSender implements CommandExecutor {
             }
             sql = "UPDATE accounts SET credit_card_limit = " + newCreditLimit + " WHERE account_id = " + accountId + ";";
             try {
-                accStmt.execute(sql);
+                stmt.execute(sql);
                 sendMessage(chatId, "Done successfully");
             } catch(SQLException e) {
                 sendException(e);
@@ -274,8 +274,8 @@ public class Accounts extends MessageSender implements CommandExecutor {
         sql1 = "DELETE FROM accounts WHERE account_id = " + accountId + ";";
         sql2 = "DELETE FROM transactions WHERE account_id1 = " + accountId + " OR account_id2 = " + accountId + ";";
         try {
-            accStmt.execute(sql1);
-            accStmt.execute(sql2);
+            stmt.execute(sql1);
+            stmt.execute(sql2);
             sendMessage(chatId, "Done successfully");
         } catch(SQLException e) {
             sendException(e);
@@ -353,7 +353,7 @@ public class Accounts extends MessageSender implements CommandExecutor {
         int credit_card_limit;
         
         try { 
-            rs = accStmt.executeQuery(sql); 
+            rs = stmt.executeQuery(sql); 
         } catch(SQLException e) {
             sendException(e);
             sendMessage(chatId, "Something went wrong...");
@@ -401,7 +401,7 @@ public class Accounts extends MessageSender implements CommandExecutor {
     private boolean checkAcc(int accId, long chatId) { //Checks if the account belongs to the user getting this acc and if the acc exists
         String sql = "SELECT user_id FROM accounts WHERE account_id = " + accId + ";";
         try {
-            ResultSet rs = accStmt.executeQuery(sql);
+            ResultSet rs = stmt.executeQuery(sql);
             int queryId = -1;
             while(rs.next())
                 queryId = rs.getInt(1);

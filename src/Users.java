@@ -30,8 +30,8 @@ public class Users extends MessageSender implements CommandExecutor {
             while(rs.next())
                 return;
         } catch(Exception e) {
-            sendMessage(chatId, "Something went wrong");
             sendException(e);
+            System.out.println(e.getMessage());
             return;
         }
 
@@ -39,8 +39,8 @@ public class Users extends MessageSender implements CommandExecutor {
         try {
             usrStmt.executeQuery(sql);
         } catch(Exception e) {
-            sendMessage(chatId, "Something went wrong");
             sendException(e);
+            System.out.println(e.getMessage());
             return;
         }
     }

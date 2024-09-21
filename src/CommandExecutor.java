@@ -1,3 +1,3 @@
 public interface CommandExecutor {
-    void executeCmd(String[] cmd, long userId);
+    void executeCmd(String[] cmd, long chatId);
 }
