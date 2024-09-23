@@ -5,14 +5,14 @@ import org.telegram.telegrambots.meta.generics.TelegramClient;
 
 import static logs.LogerBot.sendException;
 import logs.*;
+import utils.CommandHandler;
 
-public class Users extends MessageSender implements CommandExecutor {
-    private Statement usrStmt;
+public class Users extends CommandHandler {
+    //private Statement usrStmt;
     long chatId;
     
     public Users(Statement stmt, TelegramClient tc) {
-        super(tc);
-        usrStmt = stmt;
+        super(tc, stmt);
     }
     
 
@@ -26,7 +26,7 @@ public class Users extends MessageSender implements CommandExecutor {
         String sql = "SELECT id FROM users WHERE id = " + chatId + ";";
         ResultSet rs;
         try {
-            rs = usrStmt.executeQuery(sql);
+            rs = stmt.executeQuery(sql);
             while(rs.next())
                 return;
         } catch(Exception e) {
@@ -37,7 +37,7 @@ public class Users extends MessageSender implements CommandExecutor {
 
         sql = "INSERT INTO users (id) VALUES (" + chatId + ");";
         try {
-            usrStmt.executeQuery(sql);
+            stmt.executeQuery(sql);
         } catch(Exception e) {
             sendException(e);
             System.out.println(e.getMessage());

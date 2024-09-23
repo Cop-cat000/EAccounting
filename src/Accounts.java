@@ -10,15 +10,14 @@ import org.telegram.telegrambots.meta.generics.TelegramClient;
 
 import static logs.LogerBot.sendException;
 import logs.*;
+import utils.CommandHandler;
 
-public class Accounts extends MessageSender implements CommandExecutor {
-    private Statement stmt;
+public class Accounts extends CommandHandler {
     private long chatId;
     private String[] cmd;
 
     public Accounts(Statement stmt, TelegramClient tc) {
-        super(tc);
-        this.stmt = stmt;
+        super(tc, stmt);
     }
 
     public void executeCmd(String[] cmd, long chatId) {
@@ -118,8 +117,10 @@ public class Accounts extends MessageSender implements CommandExecutor {
             System.out.println(e.getMessage());
             return;
         }
-        if(!checkAcc(accountId, chatId))
+        if(!checkAcc(accountId, chatId)) {
+            sendMessage(chatId, "Incorrect account_id");
             return;
+        }
 
         if(field.equals("-n")) {
             String newVal;
@@ -366,7 +367,8 @@ public class Accounts extends MessageSender implements CommandExecutor {
         //Formatting
         StringBuilder message = new StringBuilder("");
         message.append("--------------------------------------------------------\n");
-        message.append(String.format("|%-10.10s|%-10.10s|%-10.10s|%-10.10s|%-10.10s|\n", "name", "id", "type", "balance", "cred lim"));
+        message.append(String.format("|%-10.10s|%-10.10s|%-10.10s|%-10.10s|%-10.10s|\n", "name",
+                    "id", "type", "balance", "cred lim"));
         message.append("--------------------------------------------------------\n");
         try {
             while(rs.next()) {
@@ -375,7 +377,8 @@ public class Accounts extends MessageSender implements CommandExecutor {
                 type = rs.getString(3);
                 availBal = rs.getInt(4);
                 credit_card_limit = rs.getInt(5);
-                message.append(String.format("|%-10.10s|%10d|%-10.10s|%10d|%10d|\n", accName, accId, type, availBal, credit_card_limit));
+                message.append(String.format("|%-10.10s|%10d|%-10.10s|%10d|%10d|\n", accName, accId,
+                            type, availBal, credit_card_limit));
                 if(type.equals("LOAN"))
                     owe += availBal;
                 else
@@ -398,7 +401,8 @@ public class Accounts extends MessageSender implements CommandExecutor {
     }
 
 
-    private boolean checkAcc(int accId, long chatId) { //Checks if the account belongs to the user getting this acc and if the acc exists
+    public boolean checkAcc(int accId, long chatId) { //Checks if the account belongs to the user getting this acc and if the acc exists
+        
         String sql = "SELECT user_id FROM accounts WHERE account_id = " + accId + ";";
         try {
             ResultSet rs = stmt.executeQuery(sql);
@@ -406,8 +410,6 @@ public class Accounts extends MessageSender implements CommandExecutor {
             while(rs.next())
                 queryId = rs.getInt(1);
             if(queryId == chatId) return true;
-
-            sendMessage(chatId, "Incorrect account id");
             return false;
         } catch (SQLException e) {
             sendException(e);

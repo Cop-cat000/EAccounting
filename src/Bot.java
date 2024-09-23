@@ -19,6 +19,6 @@ public class Bot implements LongPollingSingleThreadUpdateConsumer {
         // Set variables
         String cmd = update.getMessage().getText();
         long chatId = update.getMessage().getChatId();
-        cr.getCmd(cmd, chatId);
+        cr.executeCmd(cmd.split(" "), chatId);
     }
 }
