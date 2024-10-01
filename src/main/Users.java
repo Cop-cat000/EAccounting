@@ -1,10 +1,10 @@
+package main;
+
 import java.sql.Statement;
-import java.sql.SQLException;
 import java.sql.ResultSet;
 import org.telegram.telegrambots.meta.generics.TelegramClient;
 
 import static logs.LogerBot.sendException;
-import logs.*;
 import utils.CommandHandler;
 
 public class Users extends CommandHandler {

@@ -1,6 +1,8 @@
 import org.telegram.telegrambots.longpolling.TelegramBotsLongPollingApplication;
-import static logs.LogerBot.sendException;
+
 import logs.*;
+import main.Bot;
+import utils.database.DBConnector;
 
 class Main {
     public static void main(String[] args) {

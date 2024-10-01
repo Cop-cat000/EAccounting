@@ -1,20 +1,25 @@
+package main;
+
 import java.sql.Statement;
 import java.sql.ResultSet;
 import java.util.ArrayList;
 import java.util.Collections;
 
 import org.telegram.telegrambots.meta.generics.TelegramClient;
+import org.telegram.telegrambots.meta.api.objects.InputFile;
 
 import static logs.LogerBot.sendException;
-import logs.*;
 import utils.CommandHandler;
+import utils.file.FileProcessor;
 
 public class Transactions extends CommandHandler {
     private long chatId;
     private String[] cmd;
+    private FileProcessor fileProcessor;
 
-    public Transactions(Statement stmt, TelegramClient tc) {
+    public Transactions(Statement stmt, TelegramClient tc, FileProcessor fileProcessor) {
         super(tc, stmt);
+        this.fileProcessor = fileProcessor;
     }
 
     public void executeCmd(String[] cmd, long chatId) {
@@ -231,9 +236,10 @@ public class Transactions extends CommandHandler {
         if(accountId != -1)
             sql += " AND (account_id1 = " + accountId + " OR account_id2 = " + accountId + ")";
         sql += " ORDER BY date;";
-        message.append("---------------------------------------------------------------------------------------\n");
-        message.append(String.format("|%-10.10s|%-10.10s|%-10.10s|%-10.10s|%-10.10s|%-30.30s|\n", 
+        message.append("--------------------------------------------------------------------------------------------------------------------------------------------------------\n");
+        message.append(String.format("|%-15.15s|%-16.16s|%-14.14s|%-10.10s|%-10.10s|%-80.80s|\n", 
                     "sum", "date", "type", "acc_id1", "acc_id2", "comment"));
+        message.append("--------------------------------------------------------------------------------------------------------------------------------------------------------\n");
         int income = 0;
         int spending = 0;
         int sum;
@@ -251,7 +257,7 @@ public class Transactions extends CommandHandler {
                 accId1 = rs.getInt(4);
                 accId2 = rs.getInt(5);
                 comment = rs.getString(6);
-                message.append(String.format("|%-10d|%-10.10s|%-10.10s|%-10d|%-10d|%-30.30s|\n",
+                message.append(String.format("|%-15d|%-16.16s|%-14.14s|%-10d|%-10d|%-80.80s|\n",
                             sum, date, type, accId1, accId2, comment));
                 if(type.equals("PAYMENT") || (type.equals("TRANSFER") && sum < 0))
                     spending += sum;
@@ -265,10 +271,11 @@ public class Transactions extends CommandHandler {
             System.out.println(e.getMessage());
             return;
         }
-        message.append("---------------------------------------------------------------------------------------\n");
+        message.append("--------------------------------------------------------------------------------------------------------------------------------------------------------\n");
         message.append("According to this information\n");
         message.append("Your income is " + Integer.valueOf(income) + "\n");
         message.append("Your spending is " + Integer.valueOf(spending) + "\n");
-        sendMessage(chatId, message.toString());
+        InputFile doc = new InputFile(fileProcessor.getFile(message.toString(), "Transactions-info.txt"));
+        sendMessage(chatId, doc);
     }
 }

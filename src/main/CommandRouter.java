@@ -1,11 +1,12 @@
+package main;
+
 import java.sql.Statement;
 import java.util.Map;
 import java.util.HashMap;
 import org.telegram.telegrambots.meta.generics.TelegramClient;
 
-import static logs.LogerBot.sendException;
-import logs.*;
 import utils.CommandHandler;
+import utils.file.FileProcessor;
 
 public class CommandRouter extends CommandHandler {
     //Util fields
@@ -16,9 +17,10 @@ public class CommandRouter extends CommandHandler {
     public CommandRouter(Statement stmt, TelegramClient tc) {
         super(tc, stmt);
         //Objects initialization
+        fileProcessor = new FileProcessor();
         users = new Users(stmt, tc);
-        accounts = new Accounts(stmt, tc);
-        transactions = new Transactions(stmt, tc);
+        accounts = new Accounts(stmt, tc, fileProcessor);
+        transactions = new Transactions(stmt, tc, fileProcessor);
 
         commands.put("/start", users);
         
@@ -35,6 +37,7 @@ public class CommandRouter extends CommandHandler {
     private Users users;
     private Accounts accounts;
     private Transactions transactions;
+    private FileProcessor fileProcessor;
     
 
     //Private methods

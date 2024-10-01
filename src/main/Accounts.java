@@ -1,3 +1,5 @@
+package main;
+
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -7,17 +9,20 @@ import java.util.Map;
 import java.util.HashMap;
 import java.util.Arrays;
 import org.telegram.telegrambots.meta.generics.TelegramClient;
+import org.telegram.telegrambots.meta.api.objects.InputFile;
 
 import static logs.LogerBot.sendException;
-import logs.*;
 import utils.CommandHandler;
+import utils.file.FileProcessor;
 
 public class Accounts extends CommandHandler {
     private long chatId;
     private String[] cmd;
+    private FileProcessor fileProcessor;
 
-    public Accounts(Statement stmt, TelegramClient tc) {
+    public Accounts(Statement stmt, TelegramClient tc, FileProcessor fileProcessor) {
         super(tc, stmt);
+        this.fileProcessor = fileProcessor;
     }
 
     public void executeCmd(String[] cmd, long chatId) {
@@ -366,10 +371,10 @@ public class Accounts extends CommandHandler {
 
         //Formatting
         StringBuilder message = new StringBuilder("");
-        message.append("--------------------------------------------------------\n");
-        message.append(String.format("|%-10.10s|%-10.10s|%-10.10s|%-10.10s|%-10.10s|\n", "name",
-                    "id", "type", "balance", "cred lim"));
-        message.append("--------------------------------------------------------\n");
+        message.append("------------------------------------------------------------------------\n");
+        message.append(String.format("|%-20.20s|%-10.10s|%-11.11s|%-15.15s|%-10.10s|\n", "name",
+                    "id", "type", "balance", "credit_limit"));
+        message.append("------------------------------------------------------------------------\n");
         try {
             while(rs.next()) {
                 accName = rs.getString(1);
@@ -377,7 +382,7 @@ public class Accounts extends CommandHandler {
                 type = rs.getString(3);
                 availBal = rs.getInt(4);
                 credit_card_limit = rs.getInt(5);
-                message.append(String.format("|%-10.10s|%10d|%-10.10s|%10d|%10d|\n", accName, accId,
+                message.append(String.format("|%-20.20s|%10d|%-11.11s|%15d|%10d|\n", accName, accId,
                             type, availBal, credit_card_limit));
                 if(type.equals("LOAN"))
                     owe += availBal;
@@ -391,13 +396,13 @@ public class Accounts extends CommandHandler {
             System.out.println(e.getMessage());
             return;
         }
-        message.append("--------------------------------------------------------\n");
+        message.append("------------------------------------------------------------------------\n");
         message.append("According to this information\n" +
                 "You have " + sum + "\n" +
                 "You owe " + owe + "\n" +
                 "So totally you have " + (sum - owe));
-        sendMessage(chatId, message.toString());
-        sendMessage(chatId, "Copy this message and use monospaced type to see info properly");
+        InputFile doc = new InputFile(fileProcessor.getFile(message.toString(), "Accounts-info.txt"));
+        sendMessage(chatId, doc);
     }
 
 
