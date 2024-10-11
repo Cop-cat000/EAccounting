@@ -1,28 +1,28 @@
 import org.telegram.telegrambots.longpolling.TelegramBotsLongPollingApplication;
 
-import logs.*;
 import main.Bot;
-import utils.database.DBConnector;
+import persistence.CustomPersistenceUnitInfo;
+
+import java.util.HashMap;
 
 class Main {
     public static void main(String[] args) {
-        DBConnector.connect(args[0], args[1], args[2]);
+        String puName = "EAccounting_persistence_unit";
+        String url = args[0];
+        String username = args[1];
+        String passwd = args[2];
+        CustomPersistenceUnitInfo cpui = new CustomPersistenceUnitInfo(puName, url, username, passwd);
+
         String botToken = args[3];
-        String logBotToken = args[4];
 
         try (TelegramBotsLongPollingApplication botsApplication = new TelegramBotsLongPollingApplication()) {
-            Bot bot = new Bot(botToken);
+            Bot bot = new Bot(botToken, cpui, new HashMap<String,String>());
             botsApplication.registerBot(botToken, bot);
-            System.out.println("Bot successfully started!");
-
-            TelegramBotsLongPollingApplication botsApplicationLoger = new TelegramBotsLongPollingApplication();
-            LogerBot logerBot = new LogerBot(logBotToken, DBConnector.getStatement());
-            botsApplicationLoger.registerBot(logBotToken, logerBot);
             System.out.println("Bot successfully started!");
 
             Thread.currentThread().join();
         } catch (Exception e) {
-            System.out.println(e.getMessage());
+            e.printStackTrace();
         }
     }
 }

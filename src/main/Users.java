@@ -1,47 +1,53 @@
 package main;
 
-import java.sql.Statement;
-import java.sql.ResultSet;
 import org.telegram.telegrambots.meta.generics.TelegramClient;
 
-import static logs.LogerBot.sendException;
-import utils.CommandHandler;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.EntityTransaction;
 
-public class Users extends CommandHandler {
-    //private Statement usrStmt;
-    long chatId;
+import utils.CommandExecutor;
+import utils.MessageSender;
+import persistence.entities.User;
+
+
+public class Users extends MessageSender implements CommandExecutor {
+    private long chatId;
+    private EntityManager em;
     
-    public Users(Statement stmt, TelegramClient tc) {
-        super(tc, stmt);
+    public Users(TelegramClient tc) {
+        super(tc);
     }
     
 
     //Public methods
-    public void executeCmd(String[] cmd, long chatId) {
+    public void executeCmd(String[] cmd, long chatId, EntityManager em) {
         this.chatId = chatId;
+        this.em = em;
         if(cmd[0].equals("/start")) addUser();
     }
 
     private void addUser() {
-        String sql = "SELECT id FROM users WHERE id = " + chatId + ";";
-        ResultSet rs;
         try {
-            rs = stmt.executeQuery(sql);
-            while(rs.next())
-                return;
-        } catch(Exception e) {
-            sendException(e);
-            System.out.println(e.getMessage());
-            return;
-        }
+            EntityTransaction transaction = em.getTransaction();
+            transaction.begin();
 
-        sql = "INSERT INTO users (id) VALUES (" + chatId + ");";
-        try {
-            stmt.executeQuery(sql);
+            User user = em.find(User.class, chatId);
+            if(user == null) {
+                user = new User();
+                user.setId(chatId);
+
+                em.persist(user);
+
+                transaction.commit();
+                sendMessage(chatId, "Started bot successfully");
+            }
+            else sendMessage(chatId, "Bot has been already started!");
+        
         } catch(Exception e) {
-            sendException(e);
-            System.out.println(e.getMessage());
-            return;
+            sendMessage(chatId, "Failed to start bot, try /start again");
+            e.printStackTrace();
+        } finally {
+            em.close();
         }
     }
 }

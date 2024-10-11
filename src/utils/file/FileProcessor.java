@@ -4,31 +4,28 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.BufferedWriter;
 
-import static logs.LogerBot.sendException;
 
 public class FileProcessor {
-    private static String filePrototype = "/home/main/programs/";
+    private static final String filePrefix = "/home/main/programs/";
 
-    public File getFile(String text, String fileName) {
+    public File getFile(String text, String fileName) throws Exception {
         //Cleaning up
-        File file = new File(filePrototype + fileName);
+        File file = new File(filePrefix + fileName);
         try {
             file.delete();
             file.createNewFile();
         } catch(Exception e) {
-            sendException(e);
-            System.out.println(e.getMessage());
+            throw new Exception(e);
         }
 
 
         try {
             BufferedWriter out = new BufferedWriter(
-                    new FileWriter(fileName, true));
+                    new FileWriter(filePrefix + fileName, true));
             out.write(text);
             out.close();
         } catch(Exception e) {
-            sendException(e);
-            System.out.println(e.getMessage());
+            throw new Exception(e);
         }
         return file;
     }

@@ -1,33 +1,42 @@
 package main;
 
-import java.sql.Statement;
+import java.util.List;
 import java.util.ArrayList;
-import java.util.Collections;
-import java.sql.SQLException;
-import java.sql.ResultSet;
 import java.util.Map;
 import java.util.HashMap;
 import java.util.Arrays;
+import java.time.LocalDateTime;
+
 import org.telegram.telegrambots.meta.generics.TelegramClient;
 import org.telegram.telegrambots.meta.api.objects.InputFile;
 
-import static logs.LogerBot.sendException;
-import utils.CommandHandler;
-import utils.file.FileProcessor;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.EntityTransaction;
 
-public class Accounts extends CommandHandler {
+import utils.MessageSender;
+import utils.CommandExecutor;
+import utils.file.FileProcessor;
+import persistence.entities.User;
+import persistence.entities.Account;
+import persistence.entities.Transaction;
+
+
+public class Accounts extends MessageSender implements CommandExecutor {
     private long chatId;
     private String[] cmd;
-    private FileProcessor fileProcessor;
+    private final FileProcessor fileProcessor;
+    private EntityManager em;
 
-    public Accounts(Statement stmt, TelegramClient tc, FileProcessor fileProcessor) {
-        super(tc, stmt);
+    public Accounts(TelegramClient tc, FileProcessor fileProcessor) {
+        super(tc);
         this.fileProcessor = fileProcessor;
     }
 
-    public void executeCmd(String[] cmd, long chatId) {
+    public void executeCmd(String[] cmd, long chatId, EntityManager em) {
         this.cmd = cmd;
         this.chatId = chatId;
+        this.em = em;
+
         if(cmd[0].equals("/add_account")) addAccount();
         else if(cmd[0].equals("/edit_account")) editAccount();
         else if(cmd[0].equals("/del_account")) deleteAccount();
@@ -41,57 +50,79 @@ public class Accounts extends CommandHandler {
     }
     private void printHowToAdd() {
         String message = "This command must be like the following:\n" +
-            "/add_account name type sum credit_card_limit.\n" + 
+            "/add_account name type sum credit_card_limit description.\n" + 
             "Where name is the name for the account.\n" +
             "Type of account from the following list:\n" +
             "DEBIT, CASH, INVESTMENT, CREDIT_CARD, LOAN.\n" + 
             "Sum is the sum on your account, but if you specified the type as 'LOAN' the SUM must the sum that you owe.\n" +
-            "Credit_card_limit, use it to specify credit card limit if 'TYPE' is 'CREDIT_CARD', otherwise keep this field empty.";
+            "Credit_card_limit, use it to specify credit card limit if 'TYPE' is 'CREDIT_CARD', otherwise keep this field empty.\n" +
+            "Description is optional and its max length is 50 characters\n";
         sendMessage(chatId, message);
     }
-    private void add(){
-        ArrayList<String> types = new ArrayList<String>();
-        Collections.addAll(types, "DEBIT", "CASH", "INVESTMENT", "CREDIT_CARD", "LOAN");
-        String name;
-        String type;
-        int availBalance;
-        try {
+    private void add() {
+        try { 
+            EntityTransaction entityTransaction = em.getTransaction();
+            entityTransaction.begin();
+        
+            String name;
+            User user = em.find(User.class, chatId);
+            String type;
+            int availBalance;
+            int creditCardLimit = 0;
+            StringBuilder description = new StringBuilder("");
+            List<String> types = List.of("DEBIT", "CASH", "INVESTMENT", "CREDIT_CARD", "LOAN");
+
+            //Setting vars
             name = cmd[1];
-            type = cmd[2];
-            availBalance = Integer.parseInt(cmd[3]);
-        } catch(Exception e) {
-            sendMessage(chatId, "Incorrect input");
-            sendException(e);
-            System.out.println(e.getMessage());
-            return;
-        }
-        int creditLimit;
-        if(!types.contains(type)) {
-            sendMessage(chatId, "Incorrect type");
-            return;
-        }
-        String sql = "INSERT INTO accounts (account_name, user_id, type, avail_balance, credit_card_limit) " +
-            "VALUES ('" + name + "', " + chatId + ", '" + type + "', " + availBalance + ", ";
-        if(type.equals("CREDIT_CARD")) {
             try {
-                creditLimit = Integer.parseInt(cmd[4]);
+                type = cmd[2];
+                if(!types.contains(type)) throw new Exception();
             } catch(Exception e) {
-                sendException(e);
-                sendMessage(chatId, "Incorrect input(credit_card_limit)");
-                System.out.println(e.getMessage());
+                sendMessage(chatId, "Incorrect type");
+                e.printStackTrace();
                 return;
             }
-            sql += creditLimit + ");";
-        }
-        else
-            sql += "null);";
-        try {
-            stmt.execute(sql);
-            sendMessage(chatId, "Done successfully");
-        } catch(SQLException e) {
-            sendException(e);
+            try {
+                availBalance = Integer.parseInt(cmd[3]);
+            } catch(Exception e) {
+                sendMessage(chatId, "Incorrect sum");
+                e.printStackTrace();
+                return;
+            }
+            int i = 4;
+            if(type.equals("CREDIT_CARD")) {
+                i++;
+                try {
+                    creditCardLimit = Integer.parseInt(cmd[4]);
+                } catch(Exception e) {
+                    sendMessage(chatId, "Incorrect credit_card_limit");
+                    e.printStackTrace();
+                    return;
+                }
+            }
+            if(cmd.length > i) {
+                while(i < cmd.length)
+                    description.append(cmd[i++]).append(" ");
+            }
+
+            //Persisting
+            Account newAcc = new Account();
+            newAcc.setName(name);
+            newAcc.setUser(user);
+            newAcc.setType(type);
+            newAcc.setAvailBalance(availBalance);
+            newAcc.setCreditCardLimit(creditCardLimit);
+            newAcc.setDescription(description.toString());
+
+            em.persist(newAcc);
+
+            entityTransaction.commit();
+            sendMessage(chatId, "Done successfully!");
+        } catch(Exception e) {
             sendMessage(chatId, "Something went wrong");
-            System.out.println(e.getMessage());
+            e.printStackTrace();
+        } finally {
+            em.close();
         }
     }
 
@@ -105,147 +136,104 @@ public class Accounts extends CommandHandler {
             "/edit_account account_id field new_val.\n" + 
             "Where field is the field of the account you want to change.\n" +
             "Type here -n to change account name, \n" +
-            "-b to change balance, -l to change credit limit(for credit cards).\n" + 
+            "-b to change balance, -l to change credit limit(for credit cards).\n" +
+            "-d to change description\n" +
             "In the field 'new_val' specify new value for the field you have chosen.\n";
         sendMessage(chatId, message);
     }
-    private void edit(){
-        int accountId;
+    private void edit() {
+        int id;
         String field;
-        String sql;
+        Account account;
+        try { 
+            EntityTransaction entityTransaction = em.getTransaction();
+            entityTransaction.begin();
+            
+            //Setting vars
+            try {
+                id = Integer.parseInt(cmd[1]);
+                account = em.find(Account.class, id);
+                if(account == null || account.getUser().getId() != chatId) 
+                    throw new Exception();
+            } catch(Exception e) {
+                sendMessage(chatId, "Incorrect account_id");
+                e.printStackTrace();
+                return;
+            }
+        
+            try {
+                field = cmd[2];
+                if(!( field.equals("-n") || field.equals("-b") || field.equals("-d") || 
+                            (account.getType().equals("CREDIT_CARD") && field.equals("-l")) ))
+                    throw new Exception();
+            } catch(Exception e) {
+                sendMessage(chatId, "Incorrect field");
+                e.printStackTrace();
+                return;
+            }
+    
+            //Applying changes
+            if(field.equals("-n")) {
+                String newVal = cmd[3];
+                account.setName(newVal);
+            } else if(field.equals("-d")) {
+                StringBuilder newVal = new StringBuilder("");
+                for(int i = 3; i < cmd.length; i++)
+                    newVal.append(cmd[i]).append(" ");
+                account.setDescription(newVal.toString());
+            } else if(field.equals("-b")) {
+                int newVal; 
+                try {
+                    newVal = Integer.parseInt(cmd[3]);
+                } catch(Exception e) {
+                    sendMessage(chatId, "Incorrect new_val");
+                    e.printStackTrace();
+                    return;
+                }
+                int oldBal = account.getAvailBalance();
 
-        try {
-            accountId = Integer.parseInt(cmd[1]);
-            field = cmd[2];
+                account.setAvailBalance(newVal);
+
+                Transaction transaction = new Transaction();
+                transaction.setUser(account.getUser());
+                transaction.setSum(newVal - oldBal);
+                transaction.setDate(LocalDateTime.now());
+                transaction.setType("BALANCE CHANGE");
+                transaction.setAccount1(account);
+                transaction.setComment("OLD BALANCE: " + oldBal + ", NEW BALANCE: " + newVal);
+
+                em.persist(transaction);
+            } else {
+                int newVal; 
+                try {
+                    newVal = Integer.parseInt(cmd[3]);
+                } catch(Exception e) {
+                    sendMessage(chatId, "Incorrect new_val");
+                    e.printStackTrace();
+                    return;
+                }
+                int oldLim = account.getCreditCardLimit();
+
+                account.setCreditCardLimit(newVal);
+
+                Transaction transaction = new Transaction();
+                transaction.setUser(account.getUser());
+                transaction.setSum(newVal - oldLim);
+                transaction.setDate(LocalDateTime.now());
+                transaction.setType("CREDIT LIMIT CHANGE");
+                transaction.setAccount1(account);
+                transaction.setComment("OLD LIMIT: " + oldLim + ", NEW LIMIT: " + newVal);
+
+                em.persist(transaction);
+            }
+
+            entityTransaction.commit();
+            sendMessage(chatId, "Done successfully!");
         } catch(Exception e) {
-            sendMessage(chatId, "Incorrect input");
-            System.out.println(e.getMessage());
-            return;
-        }
-        if(!checkAcc(accountId, chatId)) {
-            sendMessage(chatId, "Incorrect account_id");
-            return;
-        }
-
-        if(field.equals("-n")) {
-            String newVal;
-            try {
-                newVal = cmd[3];
-            } catch(Exception e) {
-                sendException(e);
-                sendMessage(chatId, "Incorrect input (new_val)");
-                System.out.println(e.getMessage());
-                return;
-            }
-            sql = "UPDATE accounts SET account_name = '" + newVal + "' WHERE account_id = " + accountId + ";";
-            try {
-                stmt.execute(sql);
-                sendMessage(chatId, "Done successfully");
-            } catch(SQLException e) {
-                sendException(e);
-                sendMessage(chatId, "Something went wrong...");
-                System.out.println(e.getMessage());
-                return;
-            }
-        } 
-        else if(field.equals("-b")) {
-            ResultSet rs;
-            int newBalance;
-            int oldBalance = -10000000;
-            int sum;
-            String comment;
-            
-            //Getting oldBalance
-            sql = "SELECT avail_balance FROM accounts WHERE account_id = " + accountId + ";";
-            try {
-                rs = stmt.executeQuery(sql);
-                while(rs.next())
-                    oldBalance = rs.getInt(1);
-            } catch(SQLException e) {
-                sendException(e);
-                sendMessage(chatId, "Something went wrong...");
-                System.out.println(e.getMessage());
-                return;
-            }
-
-            //Changing
-            try {
-                newBalance = Integer.parseInt(cmd[3]);
-            } catch(Exception e) {
-                sendException(e);
-                sendMessage(chatId, "Incorrect input(new_val)");
-                System.out.println(e.getMessage());
-                return;
-            }
-            sql = "UPDATE accounts SET avail_balance = " + newBalance + " WHERE account_id = " + accountId + ";";
-            try {
-                stmt.execute(sql);
-                sendMessage(chatId, "Done successfully");
-            } catch(SQLException e) {
-                sendException(e);
-                sendMessage(chatId, "Something went wrong...");
-                System.out.println(e.getMessage());
-                return;
-            }
-
-            //Adding transaction
-            sum = Math.abs(oldBalance - newBalance);
-            comment = "OLD BALANCE = " + oldBalance + ", NEW BALANCE = " + newBalance + ".";
-            sql = "INSERT INTO transactions (user_id, sum, date, type, account_id1, comment) " +
-                "VALUES (" + chatId + ", " + sum + ", CURRENT_TIMESTAMP(), 'BALANCE CHANGE', " + accountId + ", '" + comment + "');";
-            try {
-                stmt.execute(sql);
-                sendMessage(chatId, "Done successfully");
-            } catch(SQLException e) {
-                sendException(e);
-                sendMessage(chatId, "Something went wrong...");
-                System.out.println(e.getMessage());
-                return;
-            }
-        }
-        else if(field.equals("-l")) {
-            //Gettin account type
-            String type = "0";
-            ResultSet rs;
-            sql = "SELECT type FROM accounts WHERE account_id = " + accountId + ";";
-            try {
-                rs = stmt.executeQuery(sql);
-                while(rs.next())
-                    type = rs.getString(1);
-            } catch(SQLException e) {
-                sendException(e);
-                sendMessage(chatId, "Something went wrong...");
-                System.out.println(e.getMessage());
-                return;
-            }
-            if(!type.equals("CREDIT_CARD")) {
-                sendMessage(chatId, "Account type must be credit card to do this");
-                return;
-            }
-            
-            int newCreditLimit;
-            try {
-                newCreditLimit = Integer.parseInt(cmd[3]);
-            } catch(Exception e) {
-                sendException(e);
-                sendMessage(chatId, "Incorrect input(new_val)");
-                System.out.println(e.getMessage());
-                return;
-            }
-            sql = "UPDATE accounts SET credit_card_limit = " + newCreditLimit + " WHERE account_id = " + accountId + ";";
-            try {
-                stmt.execute(sql);
-                sendMessage(chatId, "Done successfully");
-            } catch(SQLException e) {
-                sendException(e);
-                sendMessage(chatId, "Something went wrong...");
-                System.out.println(e.getMessage());
-                return;
-            }
-        }
-        else {
-            sendMessage(chatId, "Incorrect input");
-            return;
+            sendMessage(chatId, "Something went wrong");
+            e.printStackTrace();
+        } finally {
+            em.close();
         }
     }
 
@@ -260,34 +248,31 @@ public class Accounts extends CommandHandler {
         sendMessage(chatId, message);
     }
     private void delete() {
-        int accountId;
-        String sql1;
-        String sql2;
-        
-        try {
-            accountId = Integer.parseInt(cmd[1]);
-        } catch(Exception e) {
-            sendException(e);
-            sendMessage(chatId, "Incorrect input");
-            System.out.println(e.getMessage());
-            return;
-        }
+        Account account;
+        int id;
+        try { 
+            EntityTransaction entityTransaction = em.getTransaction();
+            entityTransaction.begin();
 
-        if(!checkAcc(accountId, chatId)) {
-            sendMessage(chatId, "Incorrect input");
-            return;
-        }
-        sql1 = "DELETE FROM accounts WHERE account_id = " + accountId + ";";
-        sql2 = "DELETE FROM transactions WHERE account_id1 = " + accountId + " OR account_id2 = " + accountId + ";";
-        try {
-            stmt.execute(sql1);
-            stmt.execute(sql2);
-            sendMessage(chatId, "Done successfully");
-        } catch(SQLException e) {
-            sendException(e);
-            sendMessage(chatId, "Something went wrong...");
-            System.out.println(e.getMessage());
-            return;
+            try {
+                id = Integer.parseInt(cmd[1]);
+                account = em.find(Account.class, id);
+                if(account == null || account.getUser().getId() != chatId) 
+                        throw new Exception();
+            } catch(Exception e) {
+                sendMessage(chatId, "Incorrect account_id");
+                e.printStackTrace();
+                return;
+            }
+            em.remove(account);
+
+            entityTransaction.commit();
+            sendMessage(chatId, "Done successfully!");
+        } catch(Exception e) {
+            sendMessage(chatId, "Something went wrong");
+            e.printStackTrace();
+        } finally {
+            em.close();
         }
     }
 
@@ -305,122 +290,89 @@ public class Accounts extends CommandHandler {
                 "e.g \"-d -l -i...\".";
         sendMessage(chatId, message);
     }
-    private void display(){
-        ResultSet rs;
+    private void display() {
         String[] args;
-        String sql;
-        String columns = "account_name, account_id, type, avail_balance, credit_card_limit FROM accounts";
+        args = Arrays.copyOfRange(cmd, 1, cmd.length);
 
-        try {
-            args = Arrays.copyOfRange(cmd, 1, cmd.length);
-        } catch(Exception e) {
-            sendException(e);
-            sendMessage(chatId, "Incorrect input");
-            System.out.println(e.getMessage());
-            return;
-        }
-        //Making sql
-        if(args[0].equals("*"))
-            sql = "SELECT " + columns + " WHERE user_id = " + chatId + ";";
-
-        else if(args[0].charAt(0) == '-') {
-            sql = "SELECT " + columns + " WHERE user_id = " + chatId + " AND (";
-            Map<String,String> flags = new HashMap<String,String>();
-            flags.put("-d", "type = 'DEBIT'");
-            flags.put("-cc", "type = 'CREDIT_CARD'");
-            flags.put("-l", "type = 'LOAN'");
-            flags.put("-i", "type = 'INVESTMENT'");
-            flags.put("-c", "type = 'CASH'");
-            for(int i = 0; i < args.length; i++) {
-                sql += flags.get(args[i]);
-                if(i < args.length-1) 
-                    sql += " OR ";
-            } sql += ");";
-        } else if(Character.isDigit(args[0].charAt(0))) {
-            sql = "SELECT " + columns + " WHERE user_id = " + chatId + " AND (";
-            for(int i = 0; i < args.length; i++) {
-                if(!args[i].matches("\\d+") || !checkAcc(Integer.valueOf(args[i]), chatId)) {
-                    sendMessage(chatId, "Incorrect input");
-                    return;
-                }
-                sql += "account_id = " + Integer.valueOf(args[i]);
-                if(i < args.length-1)
-                    sql += " OR ";
-            } sql += ");";
-        } else {
-            sendMessage(chatId, "Incorrect input.");
-            return;
-        }
-        //Vars for formatting
-        String accName;
-        int accId;
-        String type;
-        int availBal;
-        int credit_card_limit;
-        
-        try { 
-            rs = stmt.executeQuery(sql); 
-        } catch(SQLException e) {
-            sendException(e);
-            sendMessage(chatId, "Something went wrong...");
-            System.out.println(e.getMessage());
-            return;
-        }
         int sum = 0;
         int owe = 0;
 
-        //Formatting
-        StringBuilder message = new StringBuilder("");
-        message.append("------------------------------------------------------------------------\n");
-        message.append(String.format("|%-20.20s|%-10.10s|%-11.11s|%-15.15s|%-10.10s|\n", "name",
-                    "id", "type", "balance", "credit_limit"));
-        message.append("------------------------------------------------------------------------\n");
-        try {
-            while(rs.next()) {
-                accName = rs.getString(1);
-                accId = rs.getInt(2);
-                type = rs.getString(3);
-                availBal = rs.getInt(4);
-                credit_card_limit = rs.getInt(5);
-                message.append(String.format("|%-20.20s|%10d|%-11.11s|%15d|%10d|\n", accName, accId,
-                            type, availBal, credit_card_limit));
-                if(type.equals("LOAN"))
-                    owe += availBal;
+        User user = em.find(User.class, chatId);
+        List<Account> accounts = user.getAccounts();
+        StringBuilder result = new StringBuilder("");
+        result.append("---------------------------------------------------" +
+                "-----------------------------------------------------------------------\n");
+        result.append(String.format("|%-20.20s|%-10.10s|%-11.11s|%-15.15s|%-10.10s|%-50.50s|\n", "name",
+                    "id", "type", "balance", "credit_limit", "description"));
+        result.append("---------------------------------------------------" +
+                "-----------------------------------------------------------------------\n");
+
+        if(args[0].equals("*")) {
+            for(Account account : accounts) {
+                if(account.getType().equals("LOAN"))
+                    owe += account.getAvailBalance();
                 else
-                    sum += availBal; 
-                owe += credit_card_limit;
+                    sum += account.getAvailBalance();
+                owe += account.getCreditCardLimit();
+
+                result.append(account.toString());
             }
-        } catch(SQLException e) {
-            sendException(e);
-            sendMessage(chatId, "Something went wrong...");
-            System.out.println(e.getMessage());
-            return;
+        } else if(args[0].charAt(0) == '-') {
+            Map<String,String> flags = new HashMap<String,String>();
+            flags.put("DEBIT", "-d");
+            flags.put("CREDIT_CARD", "-cc");
+            flags.put("LOAN", "-l");
+            flags.put("INVESTMENT", "-i");
+            flags.put("CASH", "-c");
+
+            List<String> argsList = Arrays.asList(args);
+            for(Account account : accounts) {
+                if( argsList.contains( flags.get( account.getType() ) ) ) {
+                    if(account.getType().equals("LOAN"))
+                        owe += account.getAvailBalance();
+                    else
+                        sum += account.getAvailBalance();
+                    owe += account.getCreditCardLimit();
+
+                    result.append(account.toString());
+                }
+            }
+        } else if(Character.isDigit(args[0].charAt(0))) {
+            List<Short> argsList = new ArrayList<Short>();
+            for(String num : args) {
+                short x;
+                try {
+                    x = Short.parseShort(num);
+                } catch(Exception e) {
+                    continue;
+                }
+                argsList.add(x);
+            }
+            for(Account account : accounts) {
+                if( argsList.contains( account.getId() ) ) {
+                    if(account.getType().equals("LOAN"))
+                        owe += account.getAvailBalance();
+                    else
+                        sum += account.getAvailBalance();
+                    owe += account.getCreditCardLimit();
+
+                    result.append(account.toString());
+                }
+            }
         }
-        message.append("------------------------------------------------------------------------\n");
-        message.append("According to this information\n" +
+        result.append("---------------------------------------------------" +
+                "-----------------------------------------------------------------------\n");
+        result.append("According to this information\n" +
                 "You have " + sum + "\n" +
                 "You owe " + owe + "\n" +
                 "So totally you have " + (sum - owe));
-        InputFile doc = new InputFile(fileProcessor.getFile(message.toString(), "Accounts-info.txt"));
-        sendMessage(chatId, doc);
-    }
-
-
-    public boolean checkAcc(int accId, long chatId) { //Checks if the account belongs to the user getting this acc and if the acc exists
-        
-        String sql = "SELECT user_id FROM accounts WHERE account_id = " + accId + ";";
+        InputFile doc;
         try {
-            ResultSet rs = stmt.executeQuery(sql);
-            int queryId = -1;
-            while(rs.next())
-                queryId = rs.getInt(1);
-            if(queryId == chatId) return true;
-            return false;
-        } catch (SQLException e) {
-            sendException(e);
-            sendMessage(chatId, "System err");
-            System.out.println(e.getMessage());
-            return false;
+            doc = new InputFile(fileProcessor.getFile(result.toString(), "Accounts-info.txt"));
+            sendMessage(chatId, doc);
+        } catch(Exception e) {
+            sendMessage(chatId, "Something went wrong");
+            e.printStackTrace();
         }
     }
 }
