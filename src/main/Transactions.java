@@ -160,7 +160,7 @@ public class Transactions extends MessageSender implements CommandExecutor {
                 account1.setAvailBalance( account1.getAvailBalance() - sum );
                 account2.setAvailBalance( account2.getAvailBalance() + sum );
             }
-            else if(transaction.equals("TRANSFER") || transaction.equals("UP")) {
+            else if(type.equals("TRANSFER") || type.equals("UP")) {
                 int oldBal = account1.getAvailBalance();
                 account1.setAvailBalance(oldBal + sum);
                 commentPrefix += "OLD BALANCE: " + oldBal + ", NEW BALANCE: " + (oldBal + sum) + " ";
