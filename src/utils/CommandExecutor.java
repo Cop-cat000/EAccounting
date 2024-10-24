@@ -1,7 +1,8 @@
 package utils;
 
-import jakarta.persistence.EntityManager;
+import main.Command;
 
 public interface CommandExecutor {
-    void executeCmd(String[] cmd, long chatId, EntityManager em);
+    boolean canExecute(Command command);
+    void execute(Command command);
 }

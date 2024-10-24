@@ -1,4 +1,4 @@
-package main;
+package managers;
 
 import java.util.List;
 import java.util.ArrayList;
@@ -7,49 +7,61 @@ import java.util.HashMap;
 import java.util.Arrays;
 import java.time.LocalDateTime;
 
-import org.telegram.telegrambots.meta.generics.TelegramClient;
 import org.telegram.telegrambots.meta.api.objects.InputFile;
 
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
+
 import jakarta.persistence.EntityManager;
+import jakarta.persistence.EntityManagerFactory;
 import jakarta.persistence.EntityTransaction;
 
-import utils.MessageSender;
+import main.Command;
+import utils.Message;
 import utils.CommandExecutor;
 import utils.file.FileProcessor;
 import persistence.entities.User;
 import persistence.entities.Account;
 import persistence.entities.Transaction;
 
-
-public class Accounts extends MessageSender implements CommandExecutor {
-    private long chatId;
-    private String[] cmd;
+@Component
+public class AccountManager implements CommandExecutor {
+    private final EntityManagerFactory entityManagerFactory;
+    private final Message message;
     private final FileProcessor fileProcessor;
-    private EntityManager em;
+    private final List<Integer> commandHash =
+        List.of("/add_account".hashCode(), "/edit_account".hashCode(),
+                "/del_account".hashCode(), "/display_account".hashCode());
 
-    public Accounts(TelegramClient tc, FileProcessor fileProcessor) {
-        super(tc);
+    @Autowired
+    public AccountManager(EntityManagerFactory entityManagerFactory, Message message, FileProcessor fileProcessor) {
+        this.entityManagerFactory = entityManagerFactory;
+        this.message = message;
         this.fileProcessor = fileProcessor;
     }
 
-    public void executeCmd(String[] cmd, long chatId, EntityManager em) {
-        this.cmd = cmd;
-        this.chatId = chatId;
-        this.em = em;
+    @Override
+    public boolean canExecute(Command command) {
+        return commandHash.contains(command.hashCode());
+    }
 
-        if(cmd[0].equals("/add_account")) addAccount();
-        else if(cmd[0].equals("/edit_account")) editAccount();
-        else if(cmd[0].equals("/del_account")) deleteAccount();
-        else displayAccount();
+    @Override
+    public void execute(Command command) {
+        String[] cmd = command.getCmd();
+
+        if(cmd[0].equals("/add_account")) addAccount(command);
+        else if(cmd[0].equals("/edit_account")) editAccount(command);
+        else if(cmd[0].equals("/del_account")) deleteAccount(command);
+        else displayAccount(command);
     }
     
 
-    private void addAccount() {
-        if(cmd.length == 1) printHowToAdd();
-        else add();
+    private void addAccount(Command command) {
+        if(command.getCmd().length == 1) printHowToAdd(command);
+        else add(command);
     }
-    private void printHowToAdd() {
-        String message = "This command must be like the following:\n" +
+    private void printHowToAdd(Command command) {
+        String text = "This command must be like the following:\n" +
             "/add_account name type sum credit_card_limit description.\n" + 
             "Where name is the name for the account.\n" +
             "Type of account from the following list:\n" +
@@ -57,15 +69,19 @@ public class Accounts extends MessageSender implements CommandExecutor {
             "Sum is the sum on your account, but if you specified the type as 'LOAN' the SUM must the sum that you owe.\n" +
             "Credit_card_limit, use it to specify credit card limit if 'TYPE' is 'CREDIT_CARD', otherwise keep this field empty.\n" +
             "Description is optional and its max length is 50 characters\n";
-        sendMessage(chatId, message);
+        message.send(command.getChatId(), text);
     }
-    private void add() {
+    private void add(Command command) {
+        EntityManager entityManager = entityManagerFactory.createEntityManager();
+        String[] cmd = command.getCmd();
+        long chatId = command.getChatId();
+
         try { 
-            EntityTransaction entityTransaction = em.getTransaction();
+            EntityTransaction entityTransaction = entityManager.getTransaction();
             entityTransaction.begin();
-        
+
             String name;
-            User user = em.find(User.class, chatId);
+            User user = entityManager.find(User.class, chatId);
             String type;
             int availBalance;
             int creditCardLimit = 0;
@@ -78,14 +94,14 @@ public class Accounts extends MessageSender implements CommandExecutor {
                 type = cmd[2];
                 if(!types.contains(type)) throw new Exception();
             } catch(Exception e) {
-                sendMessage(chatId, "Incorrect type");
+                message.send(chatId, "Incorrect type");
                 e.printStackTrace();
                 return;
             }
             try {
                 availBalance = Integer.parseInt(cmd[3]);
             } catch(Exception e) {
-                sendMessage(chatId, "Incorrect sum");
+                message.send(chatId, "Incorrect sum");
                 e.printStackTrace();
                 return;
             }
@@ -95,7 +111,7 @@ public class Accounts extends MessageSender implements CommandExecutor {
                 try {
                     creditCardLimit = Integer.parseInt(cmd[4]);
                 } catch(Exception e) {
-                    sendMessage(chatId, "Incorrect credit_card_limit");
+                    message.send(chatId, "Incorrect credit_card_limit");
                     e.printStackTrace();
                     return;
                 }
@@ -114,49 +130,53 @@ public class Accounts extends MessageSender implements CommandExecutor {
             newAcc.setCreditCardLimit(creditCardLimit);
             newAcc.setDescription(description.toString());
 
-            em.persist(newAcc);
+            entityManager.persist(newAcc);
 
             entityTransaction.commit();
-            sendMessage(chatId, "Done successfully!");
+            message.send(chatId, "Done successfully!");
         } catch(Exception e) {
-            sendMessage(chatId, "Something went wrong");
+            message.send(chatId, "Something went wrong");
             e.printStackTrace();
         } finally {
-            em.close();
+            entityManager.close();
         }
     }
 
 
-    private void editAccount() {
-        if(cmd.length == 1) printHowToEdit();
-        else edit();
+    private void editAccount(Command command) {
+        if(command.getCmd().length == 1) printHowToEdit(command);
+        else edit(command);
     }
-    private void printHowToEdit() {
-        String message = "This command must be like the following:\n" +
+    private void printHowToEdit(Command command) {
+        String text = "This command must be like the following:\n" +
             "/edit_account account_id field new_val.\n" + 
             "Where field is the field of the account you want to change.\n" +
             "Type here -n to change account name, \n" +
             "-b to change balance, -l to change credit limit(for credit cards).\n" +
             "-d to change description\n" +
             "In the field 'new_val' specify new value for the field you have chosen.\n";
-        sendMessage(chatId, message);
+        message.send(command.getChatId(), text);
     }
-    private void edit() {
+    private void edit(Command command) {
+        EntityManager entityManager = entityManagerFactory.createEntityManager();
+        String[] cmd = command.getCmd();
+        long chatId = command.getChatId();
+
         int id;
         String field;
         Account account;
         try { 
-            EntityTransaction entityTransaction = em.getTransaction();
+            EntityTransaction entityTransaction = entityManager.getTransaction();
             entityTransaction.begin();
             
             //Setting vars
             try {
                 id = Integer.parseInt(cmd[1]);
-                account = em.find(Account.class, id);
+                account = entityManager.find(Account.class, id);
                 if(account == null || account.getUser().getId() != chatId) 
                     throw new Exception();
             } catch(Exception e) {
-                sendMessage(chatId, "Incorrect account_id");
+                message.send(chatId, "Incorrect account_id");
                 e.printStackTrace();
                 return;
             }
@@ -167,7 +187,7 @@ public class Accounts extends MessageSender implements CommandExecutor {
                             (account.getType().equals("CREDIT_CARD") && field.equals("-l")) ))
                     throw new Exception();
             } catch(Exception e) {
-                sendMessage(chatId, "Incorrect field");
+                message.send(chatId, "Incorrect field");
                 e.printStackTrace();
                 return;
             }
@@ -186,7 +206,7 @@ public class Accounts extends MessageSender implements CommandExecutor {
                 try {
                     newVal = Integer.parseInt(cmd[3]);
                 } catch(Exception e) {
-                    sendMessage(chatId, "Incorrect new_val");
+                    message.send(chatId, "Incorrect new_val");
                     e.printStackTrace();
                     return;
                 }
@@ -202,13 +222,13 @@ public class Accounts extends MessageSender implements CommandExecutor {
                 transaction.setAccount1(account);
                 transaction.setComment("OLD BALANCE: " + oldBal + ", NEW BALANCE: " + newVal);
 
-                em.persist(transaction);
+                entityManager.persist(transaction);
             } else {
                 int newVal; 
                 try {
                     newVal = Integer.parseInt(cmd[3]);
                 } catch(Exception e) {
-                    sendMessage(chatId, "Incorrect new_val");
+                    message.send(chatId, "Incorrect new_val");
                     e.printStackTrace();
                     return;
                 }
@@ -224,80 +244,88 @@ public class Accounts extends MessageSender implements CommandExecutor {
                 transaction.setAccount1(account);
                 transaction.setComment("OLD LIMIT: " + oldLim + ", NEW LIMIT: " + newVal);
 
-                em.persist(transaction);
+                entityManager.persist(transaction);
             }
 
             entityTransaction.commit();
-            sendMessage(chatId, "Done successfully!");
+            message.send(chatId, "Done successfully!");
         } catch(Exception e) {
-            sendMessage(chatId, "Something went wrong");
+            message.send(chatId, "Something went wrong");
             e.printStackTrace();
         } finally {
-            em.close();
+            entityManager.close();
         }
     }
 
 
-    private void deleteAccount() {
-        if(cmd.length == 1) printHowToDelete();
-        else delete();
+    private void deleteAccount(Command command) {
+        if(command.getCmd().length == 1) printHowToDelete(command);
+        else delete(command);
     }
-    private void printHowToDelete() {
-        String message = "This command must be like the following:\n" +
+    private void printHowToDelete(Command command) {
+        String text = "This command must be like the following:\n" +
             "/del_account account_id.\n";
-        sendMessage(chatId, message);
+        message.send(command.getChatId(), text);
     }
-    private void delete() {
+    private void delete(Command command) {
+        EntityManager entityManager = entityManagerFactory.createEntityManager();
+        String[] cmd = command.getCmd();
+        long chatId = command.getChatId();
+
         Account account;
         int id;
         try { 
-            EntityTransaction entityTransaction = em.getTransaction();
+            EntityTransaction entityTransaction = entityManager.getTransaction();
             entityTransaction.begin();
 
             try {
                 id = Integer.parseInt(cmd[1]);
-                account = em.find(Account.class, id);
+                account = entityManager.find(Account.class, id);
                 if(account == null || account.getUser().getId() != chatId) 
                         throw new Exception();
             } catch(Exception e) {
-                sendMessage(chatId, "Incorrect account_id");
+                message.send(chatId, "Incorrect account_id");
                 e.printStackTrace();
                 return;
             }
-            em.remove(account);
+            entityManager.remove(account);
 
             entityTransaction.commit();
-            sendMessage(chatId, "Done successfully!");
+            message.send(chatId, "Done successfully!");
         } catch(Exception e) {
-            sendMessage(chatId, "Something went wrong");
+            message.send(chatId, "Something went wrong");
             e.printStackTrace();
         } finally {
-            em.close();
+            entityManager.close();
         }
     }
 
 
-    private void displayAccount() {
-        if(cmd.length == 1) printHowToDisplay();
-        else display();
+    private void displayAccount(Command command) {
+        if(command.getCmd().length == 1) printHowToDisplay(command);
+        else display(command);
     }
-    private void printHowToDisplay() {
-        String message = "This command must be like the following:\n" +
+    private void printHowToDisplay(Command command) {
+        String text = "This command must be like the following:\n" +
             "/display_account args.\n" +
             "Instead 'args' you can type \"*\" to list all accounts.\n" +
             "Or you can type specific account id, e.g. \"1 2 3...\".\n" +
             "Or you can type -d to list debit accounts, -cc for credit cards, -l for loans, -i for investments and -c for cash\n" +
                 "e.g \"-d -l -i...\".";
-        sendMessage(chatId, message);
+        message.send(command.getChatId(), text);
     }
-    private void display() {
+    private void display(Command command) {
+        EntityManager entityManager = entityManagerFactory.createEntityManager();
+        String[] cmd = command.getCmd();
+        long chatId = command.getChatId();
+
         String[] args;
         args = Arrays.copyOfRange(cmd, 1, cmd.length);
 
         int sum = 0;
         int owe = 0;
 
-        User user = em.find(User.class, chatId);
+        User user = entityManager.find(User.class, chatId);
         List<Account> accounts = user.getAccounts();
         StringBuilder result = new StringBuilder("");
         result.append("---------------------------------------------------" +
@@ -369,9 +397,9 @@ public class Accounts extends MessageSender implements CommandExecutor {
         InputFile doc;
         try {
             doc = new InputFile(fileProcessor.getFile(result.toString(), "Accounts-info.txt"));
-            sendMessage(chatId, doc);
+            message.send(chatId, doc);
         } catch(Exception e) {
-            sendMessage(chatId, "Something went wrong");
+            message.send(chatId, "Something went wrong");
             e.printStackTrace();
         }
     }

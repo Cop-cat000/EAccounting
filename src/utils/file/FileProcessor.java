@@ -4,7 +4,9 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.BufferedWriter;
 
+import org.springframework.stereotype.Component;
 
+@Component
 public class FileProcessor {
     private static final String filePrefix = "/home/main/programs/";
 
@@ -17,7 +19,6 @@ public class FileProcessor {
         } catch(Exception e) {
             throw new Exception(e);
         }
-
 
         try {
             BufferedWriter out = new BufferedWriter(

@@ -1,53 +1,66 @@
-package main;
+package managers;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
-import org.telegram.telegrambots.meta.generics.TelegramClient;
 import org.telegram.telegrambots.meta.api.objects.InputFile;
 
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
+
 import jakarta.persistence.EntityManager;
+import jakarta.persistence.EntityManagerFactory;
 import jakarta.persistence.EntityTransaction;
 import jakarta.persistence.TypedQuery;
 
+import main.Command;
 import utils.CommandExecutor;
-import utils.MessageSender;
+import utils.Message;
 import utils.file.FileProcessor;
 import persistence.entities.User;
 import persistence.entities.Account;
 import persistence.entities.Transaction;
 
-//All transanction types: BALANCE CHANGE, CREDIT LIMIT CHANGE, PAYMENT, TRANSFER, UP BALANCE, BETWEEN, CASH WITHDRAWAL
+//All transaction types: BALANCE CHANGE, CREDIT LIMIT CHANGE, PAYMENT, TRANSFER, UP BALANCE, BETWEEN, CASH WITHDRAWAL
 
-public class Transactions extends MessageSender implements CommandExecutor {
-    private long chatId;
-    private String[] cmd;
+@Component
+public class TransactionManager implements CommandExecutor {
+    private final EntityManagerFactory entityManagerFactory;
+    private final Message message;
     private final FileProcessor fileProcessor;
-    private EntityManager em;
+    private final List<Integer> commandHash =
+        List.of("/add_transaction".hashCode(), "/del_transaction".hashCode(),
+                "/display_transaction".hashCode());
 
-    public Transactions(TelegramClient tc, FileProcessor fileProcessor) {
-        super(tc);
+    @Autowired
+    public TransactionManager(EntityManagerFactory entityManagerFactory, Message message, FileProcessor fileProcessor) {
+        this.entityManagerFactory = entityManagerFactory;
+        this.message = message;
         this.fileProcessor = fileProcessor;
     }
 
-    public void executeCmd(String[] cmd, long chatId, EntityManager em) {
-        this.cmd = cmd;
-        this.chatId = chatId;
-        this.em = em;
+    @Override
+    public boolean canExecute(Command command) {
+        return commandHash.contains(command.hashCode());
+    }
 
-        if(cmd[0].equals("/add_transaction")) addTransaction();
-        else if(cmd[0].equals("/del_transaction")) deleteTransaction();
-        else displayTransaction();
+    @Override
+    public void execute(Command command) {
+        String[] cmd = command.getCmd();
+
+        if(cmd[0].equals("/add_transaction")) addTransaction(command);
+        else if(cmd[0].equals("/del_transaction")) deleteTransaction(command);
+        else displayTransaction(command);
     }
 
 
-    private void addTransaction() {
-        if(cmd.length == 1) printHowToAdd();
-        else add();
+    private void addTransaction(Command command) {
+        if(command.getCmd().length == 1) printHowToAdd(command);
+        else add(command);
     }
-    private void printHowToAdd() {
-        String message = "This command must be like the following:\n" +
+    private void printHowToAdd(Command command) {
+        String text = "This command must be like the following:\n" +
             "/add_transaction sum date type \"comment\" account_id1 account_id2\n" +
             "Where date must be like 'yyyy-mm-dd hh-mm'\n" +
             "Type must be from the following list:\n" +
@@ -59,14 +72,18 @@ public class Transactions extends MessageSender implements CommandExecutor {
             "If type is 'TRANSFER' then sum > 0 if you're getting money, otherwise type sum < 0\n" +
             "The comment must be like this 'this is the comment for the transaction', max length for comment-40\n" +
             "'UP' means UP BALANCE";
-        sendMessage(chatId, message);
+        message.send(command.getChatId(), text);
     }
-    private void add() {
+    private void add(Command command) {
+        EntityManager entityManager = entityManagerFactory.createEntityManager();
+        String[] cmd = command.getCmd();
+        long chatId = command.getChatId();
+
         try { 
-            EntityTransaction entityTransaction = em.getTransaction();
+            EntityTransaction entityTransaction = entityManager.getTransaction();
             entityTransaction.begin();
 
-            User user = em.find(User.class, chatId);
+            User user = entityManager.find(User.class, chatId);
             int sum;
             LocalDateTime date;
             String type;
@@ -91,7 +108,7 @@ public class Transactions extends MessageSender implements CommandExecutor {
 
                 date = LocalDateTime.of(year, month, day, hour, minute);
             } catch(Exception e) {
-                sendMessage(chatId, "Wrong date");
+                message.send(chatId, "Wrong date");
                 e.printStackTrace();
                 return;
             }
@@ -99,18 +116,18 @@ public class Transactions extends MessageSender implements CommandExecutor {
                 type = cmd[4];
                 if(!types.contains(type)) throw new Exception();
             } catch(Exception e) {
-                sendMessage(chatId, "Wrong type");
+                message.send(chatId, "Wrong type");
                 e.printStackTrace();
                 return;
             }
             try {
                 sum = Integer.parseInt(cmd[1]);
                 if(!type.equals("TRANSFER") && sum <= 0) {
-                    sendMessage(chatId, "Wrong sum, with this type of 'type' sum must be > 0");
+                    message.send(chatId, "Wrong sum, with this type of 'type' sum must be > 0");
                     throw new Exception();
                 }
             } catch(Exception e) {
-                sendMessage(chatId, "Wrong sum");
+                message.send(chatId, "Wrong sum");
                 e.printStackTrace();
                 return;
             }
@@ -124,16 +141,16 @@ public class Transactions extends MessageSender implements CommandExecutor {
                 comment.deleteCharAt(comment.length()-2);
                 comment.deleteCharAt(0);
             } catch(Exception e) {
-                sendMessage(chatId, "Wrong comment");
+                message.send(chatId, "Wrong comment");
                 e.printStackTrace();
                 return;
             }
             try {
-                account1 = em.find(Account.class, Integer.parseInt(cmd[i++]));
+                account1 = entityManager.find(Account.class, Integer.parseInt(cmd[i++]));
                 if(account1 == null || account1.getUser().getId() != chatId) 
                     throw new Exception();
             } catch(Exception e) {
-                sendMessage(chatId, "Wrong account_id1");
+                message.send(chatId, "Wrong account_id1");
                 e.printStackTrace();
                 return;
             }
@@ -147,11 +164,11 @@ public class Transactions extends MessageSender implements CommandExecutor {
             if(type.equals("BETWEEN")) {
                 Account account2;
                 try {
-                    account2 = em.find(Account.class, Integer.parseInt(cmd[i]));
+                    account2 = entityManager.find(Account.class, Integer.parseInt(cmd[i]));
                     if(account2 == null || account2.getUser().getId() != chatId) 
                         throw new Exception();
                 } catch(Exception e) {
-                    sendMessage(chatId, "Wrong account_id2");
+                    message.send(chatId, "Wrong account_id2");
                     e.printStackTrace();
                     return;
                 }
@@ -172,41 +189,45 @@ public class Transactions extends MessageSender implements CommandExecutor {
             }
             transaction.setComment(commentPrefix + comment.toString());
 
-            em.persist(transaction);
+            entityManager.persist(transaction);
 
             entityTransaction.commit();
-            sendMessage(chatId, "Done successfully!");
+            message.send(chatId, "Done successfully!");
         } catch(Exception e) {
-            sendMessage(chatId, "Something went wrong");
+            message.send(chatId, "Something went wrong");
             e.printStackTrace();
         } finally {
-            em.close();
+            entityManager.close();
         }
     }
 
-    private void deleteTransaction() {
-        if(cmd.length == 1) printHowToDelete();
-        else delete();
+    private void deleteTransaction(Command command) {
+        if(command.getCmd().length == 1) printHowToDelete(command);
+        else delete(command);
     }
-    private void printHowToDelete() {
-        String message = "This command must be like the following:\n" +
+    private void printHowToDelete(Command command) {
+        String text = "This command must be like the following:\n" +
             "/del_transaction transaction_id.\n";
-        sendMessage(chatId, message);
+        message.send(command.getChatId(), text);
     }
-    private void delete() {
+    private void delete(Command command) {
+        EntityManager entityManager = entityManagerFactory.createEntityManager();
+        String[] cmd = command.getCmd();
+        long chatId = command.getChatId();
+
         try { 
-            EntityTransaction entityTransaction = em.getTransaction();
+            EntityTransaction entityTransaction = entityManager.getTransaction();
             entityTransaction.begin();
             
             Transaction transaction;
             short id;
             try {
                 id = Short.parseShort(cmd[1]);
-                transaction = em.find(Transaction.class, id);
+                transaction = entityManager.find(Transaction.class, id);
                 if(transaction == null || transaction.getUser().getId() != chatId)
                     throw new Exception();
             } catch(Exception e) {
-                sendMessage(chatId, "Wrong transaction_id");
+                message.send(chatId, "Wrong transaction_id");
                 e.printStackTrace();
                 return;
             }
@@ -226,34 +247,38 @@ public class Transactions extends MessageSender implements CommandExecutor {
                 account1.setAvailBalance( account1.getAvailBalance() - sum );
             }
 
-            em.remove(transaction);
+            entityManager.remove(transaction);
 
             entityTransaction.commit();
-            sendMessage(chatId, "Done successfully!");
+            message.send(chatId, "Done successfully!");
         } catch(Exception e) {
-            sendMessage(chatId, "Something went wrong");
+            message.send(chatId, "Something went wrong");
             e.printStackTrace();
         } finally {
-            em.close();
+            entityManager.close();
         }
 
     }
 
 
-    private void displayTransaction() {
-        if(cmd.length == 1) printHowToDisplay();
-        else display();
+    private void displayTransaction(Command command) {
+        if(command.getCmd().length == 1) printHowToDisplay(command);
+        else display(command);
     }
-    private void printHowToDisplay() {
-        String message = "This command must be like following:\n" +
+    private void printHowToDisplay(Command command) {
+        String text = "This command must be like following:\n" +
             "/display_transaction period account\n" +
             "Instead period you can type either start date only\n" +
             "Or start and end e.g. 2000-01-01 or 2000-01-01 2010-01-01" +
             "Instead 'account' you can type 1 specific account id to see transactions for that account in that period\n" +
             "Or you can leave it empy to see all the transactions in that period";
-        sendMessage(chatId, message);
+        message.send(command.getChatId(), text);
     }
-    private void display() {
+    private void display(Command command) {
+        EntityManager entityManager = entityManagerFactory.createEntityManager();
+        String[] cmd = command.getCmd();
+        long chatId = command.getChatId();
+
         StringBuilder result = new StringBuilder("");
         LocalDate date1;
         LocalDate date2 = LocalDate.now().plusDays(1L);
@@ -267,7 +292,7 @@ public class Transactions extends MessageSender implements CommandExecutor {
             date1 = LocalDate.parse(cmd[1]);
             dateTime1 = date1.atStartOfDay();
         } catch(Exception e) {
-            sendMessage(chatId, "Wrong period");
+            message.send(chatId, "Wrong period");
             e.printStackTrace();
             return;
         }
@@ -276,7 +301,7 @@ public class Transactions extends MessageSender implements CommandExecutor {
                 date2 = LocalDate.parse(cmd[2]);
                 dateTime2 = date2.atStartOfDay();
             } catch(Exception e) {
-                sendMessage(chatId, "Wrong period");
+                message.send(chatId, "Wrong period");
                 e.printStackTrace();
                 return;
             }   
@@ -289,7 +314,7 @@ public class Transactions extends MessageSender implements CommandExecutor {
         result.append("-----------------------------------------------------------------------" +
                 "-----------------------------------------------------------------------------------\n");
 
-        User user = em.find(User.class, chatId);
+        User user = entityManager.find(User.class, chatId);
         String jpql = "SELECT t FROM Transaction t WHERE t.user = :user AND t.date >= :date1 AND t.date <= :date2";
         TypedQuery<Transaction> tq;
         List<Transaction> transactions;
@@ -303,25 +328,25 @@ public class Transactions extends MessageSender implements CommandExecutor {
                 else
                     id = Integer.parseInt(cmd[2]);
 
-                account = em.find(Account.class, id);
+                account = entityManager.find(Account.class, id);
                 if(account == null || account.getUser().getId() != chatId) 
                         throw new Exception();
             } catch(Exception e) {
-                sendMessage(chatId, "Wrong account_id");
+                message.send(chatId, "Wrong account_id");
                 e.printStackTrace();
                 return;
             }
 
 
             jpql += " AND (t.account1 = :account OR t.account2 = :account)";
-            tq = em.createQuery(jpql, Transaction.class);
+            tq = entityManager.createQuery(jpql, Transaction.class);
             tq.setParameter("user", user);
             tq.setParameter("date1", dateTime1);
             tq.setParameter("date2", dateTime2);
             tq.setParameter("account", account);
         }
         else { //if there's no account specification
-            tq = em.createQuery(jpql, Transaction.class);
+            tq = entityManager.createQuery(jpql, Transaction.class);
             tq.setParameter("user", user);
             tq.setParameter("date1", dateTime1);
             tq.setParameter("date2", dateTime2);
@@ -331,7 +356,7 @@ public class Transactions extends MessageSender implements CommandExecutor {
             String type = transaction.getType();
             int sum = transaction.getSum();
             if(type.equals("PAYMENT") || (type.equals("TRANSFER") && sum < 0)) 
-                spending += sum;
+                spending += Math.abs(sum);
             else if(type.equals("UP") || (type.equals("TRANSFER") && sum > 0)) 
                 income += sum;
             result.append( transaction.toString() );
@@ -344,9 +369,9 @@ public class Transactions extends MessageSender implements CommandExecutor {
         InputFile doc;
         try {
             doc = new InputFile(fileProcessor.getFile(result.toString(), "Transactions-info.txt"));
-            sendMessage(chatId, doc);
+            message.send(chatId, doc);
         } catch(Exception e) {
-            sendMessage(chatId, "Something went wrong");
+            message.send(chatId, "Something went wrong");
             e.printStackTrace();
         }
     }

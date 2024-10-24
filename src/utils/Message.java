@@ -1,20 +1,20 @@
 package utils;
 
+import org.springframework.stereotype.Component;
+
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 import org.telegram.telegrambots.meta.generics.TelegramClient;
 import org.telegram.telegrambots.meta.api.objects.InputFile;
 import org.telegram.telegrambots.meta.api.methods.send.SendDocument;
 
+@Component
+public class Message {
 
-public class MessageSender {
-    private final TelegramClient telegramClient;
+    private TelegramClient telegramClient;
 
-    public MessageSender(TelegramClient tc) {
-        telegramClient = tc;
-    }
 
-    protected void sendMessage(long chatId, String messageText) {
+    public void send(long chatId, String messageText) {
         SendMessage message = SendMessage // Create a message object
                 .builder()
                 .chatId(chatId)
@@ -27,7 +27,7 @@ public class MessageSender {
         }
     }
 
-    protected void sendMessage(long chatId, InputFile document) {
+    public void send(long chatId, InputFile document) {
         SendDocument sendDoc = SendDocument
                 .builder()
                 .chatId(chatId)
@@ -38,5 +38,9 @@ public class MessageSender {
         } catch (TelegramApiException e) {
             e.printStackTrace();
         }
+    }
+
+    public void setTelegramClient(TelegramClient telegramClient) {
+        this.telegramClient = telegramClient;
     }
 }

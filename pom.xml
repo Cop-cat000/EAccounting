@@ -1,72 +1,71 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
-  <modelVersion>4.0.0</modelVersion>
+    xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+    <modelVersion>4.0.0</modelVersion>
 
-  <groupId>Ruslan</groupId>
+    <groupId>Ruslan</groupId>
 
-  <artifactId>EAccounting</artifactId>
-  <!-- <artifactId>test</artifactId> -->
+    <artifactId>EAccounting</artifactId>
+    <!-- <artifactId>test</artifactId> -->
 
-  <packaging>jar</packaging>
+    <packaging>jar</packaging>
 
-  <version>v2.0</version>
+    <version>v3.0</version>
 
-  <name>EAccounting</name>
+    <name>EAccounting</name>
+
+    <properties>
+        <maven.compiler.source>17</maven.compiler.source>
+        <maven.compiler.target>17</maven.compiler.target>
+    </properties>
   
-  <build>
+    <build>
 
-    <plugins>
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-assembly-plugin</artifactId>
-        <executions>
-          <execution>
-            <phase>package</phase>
-            <goals>
-              <goal>single</goal>
-            </goals>
-            <configuration>
-              <archive>
-                <manifest>
-                  <mainClass>
-                    Main
-                  </mainClass>
-                </manifest>
-              </archive>
-              <descriptorRefs>
-                <descriptorRef>jar-with-dependencies</descriptorRef>
-              </descriptorRefs>
-            </configuration>
-          </execution>
-        </executions>
-      </plugin>
-        <plugin>
-            <groupId>org.apache.maven.plugins</groupId>
-            <artifactId>maven-compiler-plugin</artifactId>
-            <configuration>
-                <source>9</source>
-                <target>9</target>
-            </configuration>
-        </plugin>
-    </plugins>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-assembly-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>single</goal>
+                        </goals>
+                        <configuration>
+                            <archive>
+                                <manifest>
+                                    <mainClass>
+                                        main.Main
+                                    </mainClass>
+                                </manifest>
+                            </archive>
+                            <descriptorRefs>
+                                <descriptorRef>jar-with-dependencies</descriptorRef>
+                            </descriptorRefs>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
 
-    <sourceDirectory>src</sourceDirectory>
-    <directory>target</directory>
-  </build>
+        <sourceDirectory>src</sourceDirectory>
+        <directory>target</directory>
+    </build>
 
-  <dependencies>
+    <dependencies>
 
         <!-- For telegram bot -->
         <dependency>
-          <groupId>org.telegram</groupId>
-          <artifactId>telegrambots-longpolling</artifactId>
-          <version>7.9.1</version>
+            <groupId>org.telegram</groupId>
+            <artifactId>telegrambots-longpolling</artifactId>
+            <version>7.9.1</version>
         </dependency>
+
         <dependency>
-          <groupId>org.telegram</groupId>
-          <artifactId>telegrambots-client</artifactId>
-          <version>7.9.1</version>
+            <groupId>org.telegram</groupId>
+            <artifactId>telegrambots-client</artifactId>
+            <version>7.9.1</version>
         </dependency>
+
         <!-- mariadb connector -->
         <dependency> 
             <groupId>org.mariadb.jdbc</groupId>
@@ -80,6 +79,7 @@
             <artifactId>hibernate-core</artifactId>
             <version>6.6.1.Final</version>
         </dependency>
+
         <!-- https://mvnrepository.com/artifact/com.zaxxer/HikariCP -->
         <dependency>
             <groupId>com.zaxxer</groupId>
@@ -87,6 +87,13 @@
             <version>5.0.1</version>
         </dependency>
 
-      </dependencies>
+        <!-- https://mvnrepository.com/artifact/org.springframework/spring-context -->
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-context</artifactId>
+            <version>6.1.14</version>
+        </dependency>
+
+    </dependencies>
 
 </project>

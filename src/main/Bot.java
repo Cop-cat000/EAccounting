@@ -5,17 +5,15 @@ import org.telegram.telegrambots.longpolling.util.LongPollingSingleThreadUpdateC
 import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.generics.TelegramClient;
 
-import java.util.Map;
-
-import persistence.CustomPersistenceUnitInfo;
+import managers.CommandManager;
 
 public class Bot implements LongPollingSingleThreadUpdateConsumer {
     private final TelegramClient telegramClient;
-    CommandRouter router;
+    private final CommandManager commandManager;
 
-    public Bot(String botToken, CustomPersistenceUnitInfo cpui, Map<String,String> properties) {
+    public Bot(String botToken, CommandManager commandManager) {
         telegramClient = new OkHttpTelegramClient(botToken);
-        router = new CommandRouter(telegramClient, cpui, properties);
+        this.commandManager = commandManager;
     }
 
     @Override
@@ -25,6 +23,9 @@ public class Bot implements LongPollingSingleThreadUpdateConsumer {
         // Set variables
         String cmd = update.getMessage().getText();
         long chatId = update.getMessage().getChatId();
-        router.redirect(cmd.split(" "), chatId);
+        Command command = new Command(cmd, chatId);
+        commandManager.process(command);
     }
+
+    public TelegramClient getTelegramClient() { return telegramClient; }
 }
