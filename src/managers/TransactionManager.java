@@ -24,6 +24,8 @@ import persistence.entities.Transaction;
 
 //All transaction types: BALANCE CHANGE, CREDIT LIMIT CHANGE, PAYMENT, TRANSFER, UP BALANCE, BETWEEN, CASH WITHDRAWAL
 
+//TODO: Пофиксить время, оно неправильно отображается
+
 @Component
 public class TransactionManager implements CommandExecutor {
     private final EntityManagerFactory entityManagerFactory;
@@ -338,7 +340,7 @@ public class TransactionManager implements CommandExecutor {
             }
 
 
-            jpql += " AND (t.account1 = :account OR t.account2 = :account)";
+            jpql += " AND (t.account1 = :account OR t.account2 = :account) ORDER BY t.date";
             tq = entityManager.createQuery(jpql, Transaction.class);
             tq.setParameter("user", user);
             tq.setParameter("date1", dateTime1);
@@ -346,6 +348,7 @@ public class TransactionManager implements CommandExecutor {
             tq.setParameter("account", account);
         }
         else { //if there's no account specification
+            jpql += " ORDER BY t.date";
             tq = entityManager.createQuery(jpql, Transaction.class);
             tq.setParameter("user", user);
             tq.setParameter("date1", dateTime1);
