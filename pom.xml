@@ -1,99 +1,120 @@
+<?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-    xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
-    <modelVersion>4.0.0</modelVersion>
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+	<parent>
+		<groupId>org.springframework.boot</groupId>
+		<artifactId>spring-boot-starter-parent</artifactId>
+		<version>3.3.5</version>
+		<relativePath/> <!-- lookup parent from repository -->
+	</parent>
 
-    <groupId>Ruslan</groupId>
+	<groupId>project</groupId>
+	<artifactId>EAccounting</artifactId>
+	<version>v4.0</version>
+	<name>EAccounting</name>
+	<properties>
+		<maven.compiler.source>17</maven.compiler.source>
+		<maven.compiler.target>17</maven.compiler.target>
+	</properties>
+	<description>EAccounting project</description>
+	<url/>
+	<licenses>
+		<license/>
+	</licenses>
+	<developers>
+		<developer/>
+	</developers>
+	<scm>
+		<connection/>
+		<developerConnection/>
+		<tag/>
+		<url/>
+	</scm>
 
-    <artifactId>EAccounting</artifactId>
-    <!-- <artifactId>test</artifactId> -->
+	<dependencies>
+		<!-- mariadb connector -->
+		<dependency>
+			<groupId>org.mariadb.jdbc</groupId>
+			<artifactId>mariadb-java-client</artifactId>
+			<version>3.4.1</version>
+		</dependency>
 
-    <packaging>jar</packaging>
+		<!-- Hibernate core -->
+		<dependency>
+			<groupId>org.hibernate.orm</groupId>
+			<artifactId>hibernate-core</artifactId>
+			<version>6.6.1.Final</version>
+		</dependency>
 
-    <version>v3.0</version>
+		<!-- https://mvnrepository.com/artifact/com.zaxxer/HikariCP -->
+		<dependency>
+			<groupId>com.zaxxer</groupId>
+			<artifactId>HikariCP</artifactId>
+			<version>5.0.1</version>
+		</dependency>
 
-    <name>EAccounting</name>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-graphql</artifactId>
+		</dependency>
 
-    <properties>
-        <maven.compiler.source>17</maven.compiler.source>
-        <maven.compiler.target>17</maven.compiler.target>
-    </properties>
-  
-    <build>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-web</artifactId>
+		</dependency>
 
-        <plugins>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-assembly-plugin</artifactId>
-                <executions>
-                    <execution>
-                        <phase>package</phase>
-                        <goals>
-                            <goal>single</goal>
-                        </goals>
-                        <configuration>
-                            <archive>
-                                <manifest>
-                                    <mainClass>
-                                        main.Main
-                                    </mainClass>
-                                </manifest>
-                            </archive>
-                            <descriptorRefs>
-                                <descriptorRef>jar-with-dependencies</descriptorRef>
-                            </descriptorRefs>
-                        </configuration>
-                    </execution>
-                </executions>
-            </plugin>
-        </plugins>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-test</artifactId>
+			<scope>test</scope>
+		</dependency>
 
-        <sourceDirectory>src</sourceDirectory>
-        <directory>target</directory>
-    </build>
+		<dependency>
+			<groupId>org.springframework</groupId>
+			<artifactId>spring-webflux</artifactId>
+			<scope>test</scope>
+		</dependency>
 
-    <dependencies>
+		<dependency>
+			<groupId>org.springframework.graphql</groupId>
+			<artifactId>spring-graphql-test</artifactId>
+			<scope>test</scope>
+		</dependency>
+	</dependencies>
 
-        <!-- For telegram bot -->
-        <dependency>
-            <groupId>org.telegram</groupId>
-            <artifactId>telegrambots-longpolling</artifactId>
-            <version>7.9.1</version>
-        </dependency>
+	<build>
+		<plugins>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-assembly-plugin</artifactId>
+				<executions>
+					<execution>
+						<phase>package</phase>
+						<goals>
+							<goal>single</goal>
+						</goals>
+						<configuration>
+							<archive>
+								<manifest>
+									<mainClass>
+										project.EAccounting.EAccountingApplication
+									</mainClass>
+								</manifest>
+							</archive>
+							<descriptorRefs>
+								<descriptorRef>jar-with-dependencies</descriptorRef>
+							</descriptorRefs>
+						</configuration>
+					</execution>
+				</executions>
+			</plugin>
 
-        <dependency>
-            <groupId>org.telegram</groupId>
-            <artifactId>telegrambots-client</artifactId>
-            <version>7.9.1</version>
-        </dependency>
-
-        <!-- mariadb connector -->
-        <dependency> 
-            <groupId>org.mariadb.jdbc</groupId>
-            <artifactId>mariadb-java-client</artifactId>
-            <version>3.4.1</version>
-        </dependency>
- 
-        <!-- Hibernate core -->
-        <dependency>
-            <groupId>org.hibernate.orm</groupId>
-            <artifactId>hibernate-core</artifactId>
-            <version>6.6.1.Final</version>
-        </dependency>
-
-        <!-- https://mvnrepository.com/artifact/com.zaxxer/HikariCP -->
-        <dependency>
-            <groupId>com.zaxxer</groupId>
-            <artifactId>HikariCP</artifactId>
-            <version>5.0.1</version>
-        </dependency>
-
-        <!-- https://mvnrepository.com/artifact/org.springframework/spring-context -->
-        <dependency>
-            <groupId>org.springframework</groupId>
-            <artifactId>spring-context</artifactId>
-            <version>6.1.14</version>
-        </dependency>
-
-    </dependencies>
+			<plugin>
+				<groupId>org.springframework.boot</groupId>
+				<artifactId>spring-boot-maven-plugin</artifactId>
+			</plugin>
+		</plugins>
+	</build>
 
 </project>

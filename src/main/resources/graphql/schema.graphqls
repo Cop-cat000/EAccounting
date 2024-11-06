@@ -1,0 +1,67 @@
+type Query {
+    getUser: User
+    signIn(user: UserDetails!): Boolean
+
+    getAccounts(criteria: AccountCriteria): AccountsSummary # If criteria is null user will get all accounts
+}
+
+type Mutation {
+    signUp(user: UserDetails): Boolean
+
+    addAccount(newAccount: AccountInput!): Boolean
+    editAccount(id: Int!, editedAccount: AccountEditedFields!): Boolean # Changes only 1 field specified. If specified more, the first will be changed.
+    deleteAccount(id: Int!): Boolean
+}
+
+######################################################
+
+type User {
+    id: String!
+}
+
+input UserDetails {
+    id: String
+    password: String
+}
+
+######################################################
+
+type Account {
+    id: Int
+    name: String
+    type: AccountTypes
+    availBalance: Int
+    creditCardLimit: Int
+    description: String
+}
+
+type AccountsSummary {
+    accounts: [Account]
+    sum: Int
+    debt: Int
+    total: Int #sum - debt
+}
+
+input AccountCriteria {
+    id: [Int] # List of ids that user wants to get
+    type: [AccountTypes] # Or list of account types user wants to get
+}
+
+input AccountInput {
+    name: String!
+    type: AccountTypes!
+    availBalance: Int!
+    creditCardLimit: Int
+    description: String
+}
+
+input AccountEditedFields {
+    name: String
+    availBalance: Int
+    creditCardLimit: Int # If account type = CREDIT_CARD
+    description: String
+}
+
+enum AccountTypes {
+    DEBIT, CASH, INVESTMENT, CREDIT_CARD, LOAN
+}
