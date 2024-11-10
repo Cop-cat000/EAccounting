@@ -24,8 +24,8 @@ public class EAccountingApplication {
 			ProjectConfigData.setCustomPersistenceUnitInfo(customPersistenceUnitInfo);
 			ProjectConfigData.setHibernateProperties(new HashMap<String, String>());
 
-			var context = new AnnotationConfigApplicationContext
-					(ProjectConfig.class);
+			//var context = new AnnotationConfigApplicationContext
+					//(ProjectConfig.class);
 
 			SpringApplication.run(EAccountingApplication.class, args);
 		} catch(Exception e) {

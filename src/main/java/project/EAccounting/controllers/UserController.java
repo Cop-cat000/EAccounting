@@ -5,8 +5,9 @@ import org.springframework.graphql.data.method.annotation.Argument;
 import org.springframework.graphql.data.method.annotation.MutationMapping;
 import org.springframework.graphql.data.method.annotation.QueryMapping;
 import org.springframework.stereotype.Controller;
-
 import org.springframework.web.bind.annotation.ResponseBody;
+
+import project.EAccounting.annotations.CheckIfLoggedIn;
 import project.EAccounting.exceptions.IncorrectCredentialsException;
 import project.EAccounting.model.user.UserDetails;
 import project.EAccounting.persistence.entities.User;
@@ -27,8 +28,8 @@ public class UserController {
 
     @QueryMapping
     @ResponseBody
+    @CheckIfLoggedIn
     LoggedUserManagementService getUser() {
-        loggedUserManagementService.getId();
         return loggedUserManagementService;
     }
 
@@ -39,7 +40,7 @@ public class UserController {
 
         if(user.getPassword() != userDetails.getPasswordHashCode()) throw new IncorrectCredentialsException();
 
-        loggedUserManagementService.setUserName(userDetails.getId());
+        loggedUserManagementService.setId(userDetails.getId());
         return true;
     }
 
@@ -50,7 +51,7 @@ public class UserController {
         user.setId(userDetails.getId());
         user.setPassword(userDetails.getPasswordHashCode());
 
-        userRepository.store(user);
+        userRepository.store(user);// Throws: EntityExistsException
 
         return true;
     }

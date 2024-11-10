@@ -17,7 +17,7 @@ public class LoggedUserManagementService {
 
         return id;
     }
-    public void setUserName(String id) {
+    public void setId(String id) {
         this.id = id;
     }
 }

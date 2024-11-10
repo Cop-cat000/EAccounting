@@ -1,16 +1,44 @@
+# java.util.Date implementation
+scalar Date
+
+# java.time.LocalDate implementation
+scalar LocalDate
+
+# java.time.LocalDateTime implementation
+scalar LocalDateTime
+
+# java.time.LocalTime implementation
+scalar LocalTime
+
+# java.time.OffsetDateTime implementation
+scalar OffsetDateTime
+
+# java.time.YearMonth implementation
+scalar YearMonth
+
+# java.time.Duration implementation
+scalar Duration
+
+######################################################
+
 type Query {
     getUser: User
     signIn(user: UserDetails!): Boolean
 
     getAccounts(criteria: AccountCriteria): AccountsSummary # If criteria is null user will get all accounts
+
+    getTransactions(criteria: TransactionCriteria!): TransactionsSummary
 }
 
 type Mutation {
     signUp(user: UserDetails): Boolean
 
-    addAccount(newAccount: AccountInput!): Boolean
-    editAccount(id: Int!, editedAccount: AccountEditedFields!): Boolean # Changes only 1 field specified. If specified more, the first will be changed.
-    deleteAccount(id: Int!): Boolean
+    addAccount(newAccount: AccountInput!): AccountsSummary
+    editAccount(id: Int!, editedAccount: AccountEditedFields!): AccountsSummary # Changes only 1 field specified. If specified more, the first will be changed.
+    deleteAccount(id: Int!): AccountsSummary
+
+    addTransaction(newTransaction: TransactionInput!): TransactionsSummary
+    deleteTransaction(id: Int!): TransactionsSummary
 }
 
 ######################################################
@@ -64,4 +92,45 @@ input AccountEditedFields {
 
 enum AccountTypes {
     DEBIT, CASH, INVESTMENT, CREDIT_CARD, LOAN
+}
+
+######################################################
+
+type Transaction {
+    id: Int
+    sum: Int
+    date: LocalDateTime
+    type: TransactionTypes
+    account1: String
+    account2: String
+    comment: String
+}
+
+type TransactionsSummary {
+    transactions: [Transaction]
+    income: Int
+    spending: Int
+}
+
+input TransactionCriteria {
+    startDate: LocalDate!
+    endDate: LocalDate!
+    accountId: Int
+}
+
+input TransactionInput {
+    sum: Int!
+    date: LocalDateTime!
+    type: ClientTransactionTypes!
+    accountId1: Int!
+    accountId2: Int
+    comment: String
+}
+
+enum TransactionTypes {
+    BALANCE_CHANGE, CREDIT_CARD_LIMIT_CHANGE, PAYMENT, TRANSFER, UP, BETWEEN, CASH_WITHDRAWAL
+}
+
+enum ClientTransactionTypes {
+    PAYMENT, TRANSFER, UP, BETWEEN, CASH_WITHDRAWAL
 }

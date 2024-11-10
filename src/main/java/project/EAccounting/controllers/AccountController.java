@@ -6,6 +6,8 @@ import org.springframework.graphql.data.method.annotation.MutationMapping;
 import org.springframework.graphql.data.method.annotation.QueryMapping;
 import org.springframework.stereotype.Controller;
 
+import org.springframework.web.bind.annotation.ResponseBody;
+import project.EAccounting.annotations.CheckIfLoggedIn;
 import project.EAccounting.model.account.AccountCriteria;
 import project.EAccounting.model.account.AccountEditedFields;
 import project.EAccounting.model.account.AccountInput;
@@ -33,11 +35,11 @@ public class AccountController {
     }
 
     @QueryMapping
+    @ResponseBody
+    @CheckIfLoggedIn
     AccountsSummary getAccounts(@Argument(name = "criteria") AccountCriteria criteria) {
-        AccountsSummary accountsSummary = new AccountsSummary();
+        AccountsSummary accountsSummary;
         List<Account> accounts;
-        int sum = 0;
-        int debt = 0;
 
         if(criteria == null || (criteria.getId() == null && criteria.getType() == null))
             accounts = accountRepository.retrieveAll();
@@ -47,24 +49,15 @@ public class AccountController {
 
         else accounts = accountRepository.retrieveByType(criteria.getType());
 
-        for(Account account : accounts) {
-            if(account.getType() == AccountTypes.LOAN)
-                debt += account.getAvailBalance();
-            else
-                sum += account.getAvailBalance();
-            debt += account.getCreditCardLimit();
-        }
-
-        accountsSummary.setAccounts(accounts);
-        accountsSummary.setSum(sum);
-        accountsSummary.setDebt(debt);
-        accountsSummary.setTotal(sum - debt);
+        accountsSummary = new AccountsSummary(accounts);
 
         return accountsSummary;
     }
 
     @MutationMapping
-    boolean addAccount(@Argument(name = "newAccount") AccountInput input) {
+    @ResponseBody
+    @CheckIfLoggedIn
+    AccountsSummary addAccount(@Argument(name = "newAccount") AccountInput input) {
         Account account = new Account();
         account.setName(input.getName());
         account.setType(input.getType());
@@ -74,11 +67,13 @@ public class AccountController {
 
         accountRepository.store(account);
 
-        return true;
+        return getAccounts(null);
     }
 
     @MutationMapping
-    boolean editAccount(@Argument int id, @Argument(name = "editedAccount")AccountEditedFields accountEditedFields) {
+    @ResponseBody
+    @CheckIfLoggedIn
+    AccountsSummary editAccount(@Argument int id, @Argument(name = "editedAccount")AccountEditedFields accountEditedFields) {
         Account account = accountRepository.retrieveById(List.of(id)).get(0);
 
         if(accountEditedFields.getName() == null &&
@@ -89,52 +84,63 @@ public class AccountController {
         if(accountEditedFields.getName() != null) {
             account.setName(accountEditedFields.getName());
             accountRepository.merge(account);
-            return true;
+            return getAccounts(null);
         }
+
         if(accountEditedFields.getAvailBalance() != -1) {
-            int oldBalance = account.getAvailBalance();
-            int newBalance = accountEditedFields.getAvailBalance();
-
-            account.setAvailBalance(newBalance);
-            accountRepository.merge(account);
-
-            Transaction transaction = new Transaction();
-            transaction.setSum(Math.abs(oldBalance - newBalance));
-            transaction.setDate(LocalDateTime.now());
-            transaction.setType(TransactionTypes.BALANCE_CHANGE);
-            transaction.setAccount1(account);
-            transaction.setComment("Old balance: " + oldBalance + ", New balance: " + newBalance);
-
-            transactionRepository.store(transaction);
-            return true;
+            changeBalance(account, accountEditedFields);
+            return getAccounts(null);
         }
 
         if(accountEditedFields.getCreditCardLimit() != -1) {
-            int oldLimit = account.getCreditCardLimit();
-            int newLimit = accountEditedFields.getCreditCardLimit();
-
-            account.setCreditCardLimit(accountEditedFields.getCreditCardLimit());
-            accountRepository.merge(account);
-
-            Transaction transaction = new Transaction();
-            transaction.setSum(Math.abs(oldLimit - newLimit));
-            transaction.setDate(LocalDateTime.now());
-            transaction.setAccount1(account);
-            transaction.setType(TransactionTypes.CREDIT_CARD_LIMIT_CHANGE);
-            transaction.setComment("Old credit limit: " + oldLimit + ", New credit limit: " + newLimit);
-
-            transactionRepository.store(transaction);
-            return true;
+            changeCreditLimit(account, accountEditedFields);
+            return getAccounts(null);
         }
 
         account.setDescription(accountEditedFields.getDescription());
         accountRepository.merge(account);
-        return true;
+        return getAccounts(null);
     }
 
     @MutationMapping
-    boolean deleteAccount(@Argument int id) {
+    @ResponseBody
+    @CheckIfLoggedIn
+    AccountsSummary deleteAccount(@Argument int id) {
         accountRepository.deleteById(id);
-        return true;
+        return getAccounts(null);
+    }
+
+    private void changeBalance(Account account, AccountEditedFields accountEditedFields) {
+        int oldBalance = account.getAvailBalance();
+        int newBalance = accountEditedFields.getAvailBalance();
+
+        account.setAvailBalance(newBalance);
+        accountRepository.merge(account);
+
+        Transaction transaction = new Transaction();
+        transaction.setSum(Math.abs(oldBalance - newBalance));
+        transaction.setDate(LocalDateTime.now());
+        transaction.setType(TransactionTypes.BALANCE_CHANGE);
+        transaction.setAccount1(account);
+        transaction.setComment("Old balance: " + oldBalance + ", New balance: " + newBalance);
+
+        transactionRepository.store(transaction);
+    }
+
+    private void changeCreditLimit(Account account, AccountEditedFields accountEditedFields) {
+        int oldLimit = account.getCreditCardLimit();
+        int newLimit = accountEditedFields.getCreditCardLimit();
+
+        account.setCreditCardLimit(accountEditedFields.getCreditCardLimit());
+        accountRepository.merge(account);
+
+        Transaction transaction = new Transaction();
+        transaction.setSum(Math.abs(oldLimit - newLimit));
+        transaction.setDate(LocalDateTime.now());
+        transaction.setAccount1(account);
+        transaction.setType(TransactionTypes.CREDIT_CARD_LIMIT_CHANGE);
+        transaction.setComment("Old credit limit: " + oldLimit + ", New credit limit: " + newLimit);
+
+        transactionRepository.store(transaction);
     }
 }

@@ -10,7 +10,6 @@ import org.hibernate.jpa.HibernatePersistenceProvider;
 import project.EAccounting.managers.CommandManager;
 
 @Configuration
-@ComponentScan(basePackages = { "main", "managers", "utils" })
 public class ProjectConfig {
     
     @Bean

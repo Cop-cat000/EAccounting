@@ -8,6 +8,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Repository;
 
 import project.EAccounting.exceptions.IncorrectAccountException;
+import project.EAccounting.model.account.AccountCriteria;
 import project.EAccounting.persistence.entities.Account;
 import project.EAccounting.persistence.entities.User;
 import project.EAccounting.persistence.entities.datatypes.AccountTypes;
@@ -15,6 +16,8 @@ import project.EAccounting.services.LoggedUserManagementService;
 
 import java.util.ArrayList;
 import java.util.List;
+
+// TODO: make retrieveByCriteria method
 
 @Repository
 public class AccountRepository {
@@ -27,6 +30,8 @@ public class AccountRepository {
         this.entityManagerFactory = entityManagerFactory;
         this.loggedUserManagementService = loggedUserManagementService;
     }
+
+    //public List<Account> retrieveByCriteria(AccountCriteria)
 
     public List<Account> retrieveAll() {
         EntityManager entityManager = entityManagerFactory.createEntityManager();
@@ -98,10 +103,10 @@ public class AccountRepository {
 
             Account account = entityManager.find(Account.class, id);
             String currUserId = loggedUserManagementService.getId();
-            if(account.getUser().getId().equals(currUserId))
-                entityManager.remove(account);
+            if(account == null || !account.getUser().getId().equals(currUserId))
+                throw new IncorrectAccountException();
 
-            else throw new IncorrectAccountException();
+            entityManager.remove(account);
 
             entityTransaction.commit();
         } catch (Exception e) {

@@ -27,4 +27,5 @@ public class User {
     public List<Account> getAccounts() { return accounts; }
 
     public List<Transaction> getTransactions() { return transactions; }
+
 }
