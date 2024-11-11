@@ -1,90 +1,49 @@
 # EAccounting
 
-## Description
+EAccounting is a Java-based personal accounting application designed to help users manage their finances efficiently. It offers functionalities such as account management, transaction tracking, and financial reporting.
 
-EAccounting is a robust accounting software aimed at helping users manage their personal finances efficiently. This application allows users to track their income, expenses, accounts, and transactions in a user-friendly environment. The project is designed with simplicity in mind, while offering all the essential functionalities needed for financial management, such as creating accounts, tracking transactions.
+## Features
 
-### Key Features:
-- Multi-account management
-- Transaction tracking (expenses, income, transfers)
-- Account balance and credit card limit monitoring
-- Simple and clean user interface
-- Secure login and user authentication
+• Account Management: Create and manage multiple accounts, including bank accounts and credit cards.
+• Transaction Tracking: Record income, expenses, and transfers between accounts.
+• Financial Reporting: Generate reports to analyze financial health.
+• User Authentication: Secure login system to protect user data.
 
 ## Technologies Used
 
-- Java: Core programming language for backend logic.
-- MariaDB: Relational database used to store account and transaction data.
-- JDBC: Java Database Connectivity API for managing database connections.
-- Git: For version control and collaboration.
-- Maven: For building automation.
-- [Java telegram bot API](https://github.com/rubenlagus/TelegramBots)
-
-## Database Schema
-
-You can get acquainted with database schema with the pinned picture
-
-The database includes the following tables:
-- users: Stores user information.
-- accounts: Holds information about user accounts, including account name, available balance, credit card limit, and a description field.
-- transactions: Keeps track of all transactions related to user accounts, including amounts, dates, and comments.
+• Java: Core programming language.
+• Spring Boot: For ease app set up and dependencies management
+• Spring Context: For application context
+• Spring MVC: For building web part
+• Spring for GraphQL: REST replacement for more flexibility client-server interaction
+• JPA/Hibernate: For object-relational mapping.
+• MySQL/MariaDB: Database management systems.
+• JDBC: Java Database Connectivity.
+• Git: Version control system.
+• Linux (Artix Linux): Development environment.
+• Apache Maven: Project management and comprehension tool.
 
 ## Usage
 
-- Start the [telegram bot](https://t.me/E_Accounting_bot)
-- Add multiple financial accounts (e.g., bank accounts, credit cards).
-- Record transactions such as expenses, income, or transfers between accounts.
-- Monitor your available balances and track credit card limits.
+• Create an account: Register a new user account.
+• Add financial accounts: Set up bank accounts, credit cards, etc.
+• Record transactions: Log income, expenses, and transfers.
+• Generate reports: View summaries and detailed reports of your financial activities.
 
-## Installation
+## Contributing
 
-1. Clone the repository:
-
-   git clone https://github.com/Cop-cat000/EAccounting.git
-
-2. Navigate to the project directory:
-
-   cd EAccounting
-
-3. Set up the MariaDB database:
-    - Ensure MariaDB is installed and running.
-    - Create a new database for the project and update the database configuration in the application.
-
-4. Build the project using Maven:
-
-   mvn package
-
-5. Run the application:
-
-   java -jar target/EAccounting-v2.0-jar-with-dependencies.jar [DB url] [DB username] [DB passwd] [Bot token]
-
-## Contribution
-
-Contributions are welcome! If you'd like to contribute, please fork the repository and create a pull request with a detailed explanation of your changes.
+Contributions are welcome! Please fork the repository and create a pull request with your changes.
 
 ## License
 
-MIT License
+This project is licensed under the MIT License. See the LICENSE file for details.
 
-Copyright (c) [2024] [Sattarov Ruslan]
+## Contact
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+For any inquiries or support, please contact:
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+• Name: Ruslan Sattarov
+• Email: rusiklansat@gmail.com
+• Telegram: Cowboy_From_HeII (https://t.me/Cowboy_From_HeII)
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
----
-
-Feel free to modify this template based on any additional features or details specific to your project.
+Feel free to reach out with any questions or feedback.
