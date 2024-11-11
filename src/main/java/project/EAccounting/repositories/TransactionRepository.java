@@ -170,6 +170,12 @@ public class TransactionRepository {
                 } else if((transaction.getType() == TransactionTypes.TRANSFER && transaction.getSum() > 0) ||
                         (transaction.getType() == TransactionTypes.UP)) {
                     account1.setAvailBalance(availBalance1 - transaction.getSum());
+                } else {
+                    if(transaction.getType() == TransactionTypes.BALANCE_CHANGE || transaction.getType() == TransactionTypes.CREDIT_CARD_LIMIT_CHANGE)
+                        throw new IncorrectTransactionException();
+                    else {
+                        account1.setAvailBalance(availBalance1 + transaction.getSum());
+                    }
                 }
             }
 
